@@ -179,20 +179,38 @@ class RepositorioSessoes:
             return dict(conn.execute("SELECT * FROM sessions WHERE id=?", (sessao_id,)).fetchone())
 
     @staticmethod
-    def atualizar(sessao_id, categoria_id, inicio_iso, fim_iso, nota, funcao_calcular_duracao):
-        with get_db() as conn:
-            duracao = funcao_calcular_duracao(inicio_iso, fim_iso)
-            conn.execute(
-                "UPDATE sessions SET categoria_id=?, inicio=?, fim=?, duracao=?, nota=? WHERE id=?",
-                (categoria_id, inicio_iso, fim_iso, duracao, nota, sessao_id)
-            )
-            conn.commit()
-            row = conn.execute("SELECT * FROM sessions WHERE id=?", (sessao_id,)).fetchone()
-            return dict(row) if row else None
-
-    @staticmethod
     def deletar(sid):
         with get_db() as conn:
             conn.execute("DELETE FROM sessions WHERE id=?", (sid,))
+            conn.commit()
+            return {"ok": True}
+class RepositorioTarefas:
+    @staticmethod
+    def listar():
+        with get_db() as conn:
+            rows = conn.execute("""
+                SELECT t.*, c.nome as categoria_nome, c.cor as categoria_cor
+                FROM tasks t
+                LEFT JOIN categories c ON t.categoria_id = c.id
+                WHERE t.status = 'todo'
+                ORDER BY t.criada_em ASC
+            """).fetchall()
+            return converter_linhas_para_lista(rows)
+
+    @staticmethod
+    def criar(titulo, categoria_id):
+        with get_db() as conn:
+            cur = conn.execute(
+                "INSERT INTO tasks (titulo, categoria_id) VALUES (?,?)",
+                (titulo, categoria_id)
+            )
+            conn.commit()
+            row = conn.execute("SELECT * FROM tasks WHERE id=?", (cur.lastrowid,)).fetchone()
+            return dict(row)
+
+    @staticmethod
+    def deletar(tid):
+        with get_db() as conn:
+            conn.execute("DELETE FROM tasks WHERE id=?", (tid,))
             conn.commit()
             return {"ok": True}

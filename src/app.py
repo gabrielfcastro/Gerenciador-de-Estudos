@@ -6,7 +6,7 @@ from urllib.parse import urlparse, parse_qs
 from datetime import datetime, timezone
 
 from database import get_db, init_db
-from repositorio import RepositorioConfiguracoes, RepositorioCategorias, RepositorioSessoes
+from repositorio import RepositorioConfiguracoes, RepositorioCategorias, RepositorioSessoes, RepositorioTarefas
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
@@ -85,6 +85,14 @@ class Handler(BaseHTTPRequestHandler):
             stats = RepositorioSessoes.obter_estatisticas(periodo)
             self.send_json({"total_seconds": stats.get("total_segundos"), "session_count": stats.get("total_sessoes")})
 
+        elif path == "/api/tasks":
+            tarefas = RepositorioTarefas.listar()
+            for t in tarefas:
+                t["category_name"]  = t.get("categoria_nome")
+                t["category_color"] = t.get("categoria_cor")
+                t["category_id"]    = t.get("categoria_id")
+            self.send_json(tarefas)
+
     def do_POST(self):
         path = urlparse(self.path).path
         body = self.read_body()
@@ -97,6 +105,10 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/sessions/start":
             now = datetime.now(timezone.utc).isoformat()
             res = RepositorioSessoes.iniciar(body.get("category_id"), now, body.get("note", ""))
+            self.send_json(res, 201)
+
+        elif path == "/api/tasks":
+            res = RepositorioTarefas.criar(body["titulo"], body.get("categoria_id"))
             self.send_json(res, 201)
 
         elif path == "/api/sessions/stop":
@@ -122,29 +134,6 @@ class Handler(BaseHTTPRequestHandler):
             res = RepositorioCategorias.atualizar(cid, body["name"], body["color"])
             self.send_json({"id": res["id"], "name": res["nome"], "color": res["cor"]})
 
-        elif path.startswith("/api/sessions/"):
-            sid = path.split("/")[-1]
-            def calc_duracao(start_iso, end_iso):
-                t1 = datetime.fromisoformat(start_iso.replace('Z', '+00:00'))
-                t2 = datetime.fromisoformat(end_iso.replace('Z', '+00:00'))
-                return int((t2 - t1).total_seconds())
-            res = RepositorioSessoes.atualizar(
-                sid,
-                body.get("category_id"),
-                body["started_at"],
-                body["ended_at"],
-                body.get("note", ""),
-                calc_duracao
-            )
-            if res:
-                res["duration_seconds"] = res.get("duracao")
-                res["started_at"]       = res.get("inicio")
-                res["category_name"]    = res.get("categoria_nome")
-                res["category_color"]   = res.get("categoria_cor")
-                self.send_json(res)
-            else:
-                self.send_json({"error": "sessão não encontrada"}, 404)
-
     def do_DELETE(self):
         path = urlparse(self.path).path
 
@@ -153,6 +142,9 @@ class Handler(BaseHTTPRequestHandler):
 
         elif path.startswith("/api/sessions/"):
             self.send_json(RepositorioSessoes.deletar(path.split("/")[-1]))
+
+        elif path.startswith("/api/tasks/"):
+            self.send_json(RepositorioTarefas.deletar(path.split("/")[-1]))
 
 if __name__ == "__main__":
     init_db()

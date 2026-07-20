@@ -391,12 +391,59 @@ header{
 ::-webkit-scrollbar{width:6px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
-::-webkit-scrollbar-thumb:hover{background:var(--text3)}</style>
+::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+
+/* ── nav tabs ── */
+.header-nav{display:flex;gap:3px;margin-left:18px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:3px}
+.nav-tab{padding:5px 14px;border-radius:6px;border:none;background:none;color:var(--text2);font-size:.78rem;font-weight:600;font-family:inherit;cursor:pointer;transition:all .18s}
+.nav-tab.active{background:var(--accent-g);color:#fff;box-shadow:0 2px 8px rgba(124,111,247,.4)}
+.nav-tab:not(.active):hover{color:var(--text);background:var(--surface3)}
+
+/* ── views ── */
+.view{display:none}
+.view.active{display:flex;flex:1;min-height:0;flex-direction:column}
+#view-timer.active .main{flex:1;min-height:0}
+
+/* ── kanban ── */
+.kanban-wrap{padding:28px;display:grid;grid-template-columns:1fr 1fr;gap:20px;overflow-y:auto;flex:1}
+.kanban-col{display:flex;flex-direction:column;background:linear-gradient(160deg,var(--surface) 0%,#cdd1e0 100%);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+.kanban-col-header{padding:14px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:var(--surface2)}
+.todo-col .kanban-col-header{border-top:3px solid var(--accent)}
+.done-col .kanban-col-header{border-top:3px solid var(--green)}
+.kanban-col-title{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text2)}
+.kanban-col-count{background:var(--surface3);color:var(--text2);font-size:.7rem;font-weight:700;padding:2px 9px;border-radius:99px}
+.kanban-cards{flex:1;padding:10px;display:flex;flex-direction:column;gap:7px;overflow-y:auto;transition:background .15s;min-height:120px}
+.kanban-cards.drag-over{background:rgba(124,111,247,.08);border-radius:8px}
+.kanban-done-hint{color:var(--text3);font-size:.82rem;text-align:center;padding:40px 20px;pointer-events:none}
+.kanban-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;cursor:grab;transition:all .18s;user-select:none;box-shadow:var(--shadow-sm)}
+.kanban-card:active{cursor:grabbing}
+.kanban-card:hover{border-color:var(--accent);box-shadow:0 3px 12px rgba(124,111,247,.18);transform:translateY(-1px)}
+.kanban-card.dragging{opacity:.3;transform:scale(.97)}
+.kanban-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.kanban-card-title{font-size:.87rem;font-weight:600;color:var(--text);line-height:1.4;flex:1}
+.kanban-card-del{background:none;border:none;color:var(--text3);cursor:pointer;font-size:.78rem;padding:0;transition:color .15s;flex-shrink:0;line-height:1}
+.kanban-card-del:hover{color:var(--red)}
+.kanban-card-cat{display:inline-flex;align-items:center;gap:5px;font-size:.72rem;font-weight:500;color:var(--text2);margin-top:6px}
+.kanban-card-cat-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.kanban-add-wrap{padding:8px 10px 12px}
+.kanban-add{display:flex;align-items:center;gap:7px;padding:9px 12px;background:none;border:1px dashed var(--border2);border-radius:var(--r-sm);color:var(--text2);cursor:pointer;font-size:.83rem;font-weight:500;font-family:inherit;width:100%;transition:all .18s}
+.kanban-add:hover{border-color:var(--accent);color:var(--accent);background:rgba(124,111,247,.04)}
+
+/* ── undo banner ── */
+.undo-banner{display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:linear-gradient(160deg,var(--surface) 0%,#c8ccd8 100%);border:1px solid var(--border2);border-radius:var(--r);padding:13px 20px;align-items:center;gap:14px;font-size:.87rem;font-weight:600;color:var(--text);box-shadow:0 8px 28px rgba(80,90,130,.22);z-index:400;white-space:nowrap;overflow:hidden}
+.undo-banner.show{display:flex}
+.undo-banner .undo-btn{background:var(--accent-g);border:none;color:#fff;padding:5px 14px;border-radius:6px;cursor:pointer;font-weight:700;font-size:.8rem;font-family:inherit}
+.undo-progress{position:absolute;bottom:0;left:0;height:3px;background:var(--accent-g);border-radius:0 0 var(--r) var(--r);width:100%}
+</style>
 </head>
 <body>
 
 <header>
   <div class="logo">Gerenciador<span>·</span>de<span>·</span>Estudos</div>
+  <nav class="header-nav">
+    <button class="nav-tab active" onclick="switchView('timer',this)">⏱ Timer</button>
+    <button class="nav-tab" onclick="switchView('kanban',this)">📋 Tarefas</button>
+  </nav>
   <div class="conn">
     <div class="conn-dot" id="conn-dot"></div>
     <span id="conn-label">conectando…</span>
@@ -404,6 +451,7 @@ header{
   <button class="btn-settings" title="Configurações" onclick="openSettings()">⚙</button>
 </header>
 
+<div id="view-timer" class="view active">
 <div class="main">
   <aside class="sidebar">
     <div>
@@ -497,10 +545,75 @@ header{
 
   </main>
 </div>
+</div><!-- /view-timer -->
+
+<!-- ── Kanban ── -->
+<div id="view-kanban" class="view">
+  <div class="kanban-wrap">
+    <div class="kanban-col todo-col">
+      <div class="kanban-col-header">
+        <span class="kanban-col-title">A fazer</span>
+        <span class="kanban-col-count" id="todo-count">0</span>
+      </div>
+      <div class="kanban-cards" id="todo-cards"
+           ondragover="onDragOver(event,'todo')"
+           ondragleave="onDragLeave(event,'todo')"
+           ondrop="onDrop(event,'todo')">
+      </div>
+      <div class="kanban-add-wrap">
+        <button class="kanban-add" onclick="openAddTask()">＋ Nova tarefa</button>
+      </div>
+    </div>
+    <div class="kanban-col done-col">
+      <div class="kanban-col-header">
+        <span class="kanban-col-title">Concluído</span>
+        <span class="kanban-col-count" id="done-count">0</span>
+      </div>
+      <div class="kanban-cards" id="done-cards"
+           ondragover="onDragOver(event,'done')"
+           ondragleave="onDragLeave(event,'done')"
+           ondrop="onDrop(event,'done')">
+        <div class="kanban-done-hint" id="done-hint">Arraste aqui para concluir</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- undo banner -->
+<div class="undo-banner" id="undo-banner">
+  <span id="undo-text">Tarefa concluída</span>
+  <button class="undo-btn" onclick="undoComplete()">Desfazer</button>
+  <div class="undo-progress" id="undo-progress"></div>
+</div>
 
 <div class="alarm" id="alarm">
   ⏰ Tempo de bloco encerrado!
   <button onclick="dismissAlarm()">OK</button>
+</div>
+
+<div class="overlay" id="add-task-modal">
+  <div class="modal">
+    <h3>Nova tarefa</h3>
+    <div class="form-group">
+      <label>Título</label>
+      <input type="text" id="inp-task-title" placeholder="Ex: Capítulo 3 — Contratos" maxlength="100"/>
+    </div>
+    <div class="form-group">
+      <label>Matéria</label>
+      <div class="csel" id="task-csel">
+        <button class="csel-trigger" onclick="toggleCsel('task-csel')">
+          <span class="csel-dot" id="task-csel-dot" style="display:none"></span>
+          <span class="csel-text placeholder" id="task-csel-text">— Escolha uma categoria —</span>
+          <span class="csel-arrow">▼</span>
+        </button>
+        <div class="csel-menu" id="task-csel-menu"></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeAddTask()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveTask()">Criar tarefa</button>
+    </div>
+  </div>
 </div>
 
 <div class="overlay" id="cat-modal">
@@ -607,6 +720,11 @@ let blockSeconds  = 4500;
 let catHours      = {};
 let selCatId      = null;   // categoria selecionada no timer
 let editSelCatId  = null;   // categoria selecionada no modal de edição
+let taskSelCatId  = null;   // categoria selecionada no modal de tarefa
+let tasks         = [];
+let draggedId     = null;
+let undoTimer     = null;
+let pendingDeleteId = null;
 
 window.addEventListener('DOMContentLoaded', async () => {
   buildSwatches();
@@ -754,6 +872,7 @@ function pickCsel(cselId, id, name, color) {
   // atualiza variável de estado correta
   if (cselId === 'cat-csel')  selCatId     = id;
   if (cselId === 'edit-csel') editSelCatId = id;
+  if (cselId === 'task-csel') taskSelCatId = id;
 
   // fecha o menu
   document.getElementById(cselId).classList.remove('open');
@@ -1215,6 +1334,157 @@ document.getElementById('edit-sess-modal').addEventListener('click', function(e)
 });
 
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── View switching ──────────────────────────────────────────
+function switchView(view, btn) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-' + view).classList.add('active');
+  btn.classList.add('active');
+  if (view === 'kanban') loadTasks();
+}
+
+// ── Tasks ───────────────────────────────────────────────────
+async function loadTasks() {
+  try {
+    tasks = await (await fetch(`${API}/tasks`)).json();
+    renderTasks();
+  } catch {}
+}
+
+function renderTasks() {
+  const todoEl   = document.getElementById('todo-cards');
+  const countEl  = document.getElementById('todo-count');
+  const doneHint = document.getElementById('done-hint');
+  countEl.textContent  = tasks.length;
+  document.getElementById('done-count').textContent = '0';
+  if (doneHint) doneHint.style.display = 'block';
+
+  if (!tasks.length) {
+    todoEl.innerHTML = '<div style="color:var(--text3);font-size:.82rem;text-align:center;padding:32px 16px">Nenhuma tarefa ainda</div>';
+    return;
+  }
+
+  todoEl.innerHTML = tasks.map(t => {
+    const cat = t.categoria_id ? categories.find(c => String(c.id) === String(t.categoria_id)) : null;
+    const catHtml = cat
+      ? `<div class="kanban-card-cat">
+           <div class="kanban-card-cat-dot" style="background:${cat.color}"></div>
+           ${esc(cat.name)}
+         </div>` : '';
+    return `<div class="kanban-card" draggable="true" data-id="${t.id}"
+      ondragstart="onDragStart(event,${t.id})"
+      ondragend="onDragEnd(event)">
+      <div class="kanban-card-top">
+        <div class="kanban-card-title">${esc(t.titulo)}</div>
+        <button class="kanban-card-del" onclick="deleteTask(${t.id})" title="Remover">✕</button>
+      </div>
+      ${catHtml}
+    </div>`;
+  }).join('');
+}
+
+// ── Drag & Drop ─────────────────────────────────────────────
+function onDragStart(event, id) {
+  draggedId = id;
+  setTimeout(() => { const el = event.target; if(el) el.classList.add('dragging'); }, 0);
+  event.dataTransfer.effectAllowed = 'move';
+}
+function onDragEnd(event) { event.target.classList.remove('dragging'); }
+function onDragOver(event, col) {
+  event.preventDefault();
+  document.getElementById(col + '-cards').classList.add('drag-over');
+}
+function onDragLeave(event, col) {
+  if (!event.currentTarget.contains(event.relatedTarget))
+    document.getElementById(col + '-cards').classList.remove('drag-over');
+}
+function onDrop(event, col) {
+  event.preventDefault();
+  document.getElementById(col + '-cards').classList.remove('drag-over');
+  if (!draggedId || col !== 'done') return;
+  completeTask(draggedId);
+  draggedId = null;
+}
+
+function completeTask(taskId) {
+  const task = tasks.find(t => t.id === taskId);
+  if (!task) return;
+  tasks = tasks.filter(t => t.id !== taskId);
+  renderTasks();
+
+  if (undoTimer) { clearTimeout(undoTimer); deleteNow(pendingDeleteId); }
+  pendingDeleteId = taskId;
+
+  document.getElementById('undo-text').textContent = `"${task.titulo}" concluída`;
+  document.getElementById('undo-banner').classList.add('show');
+
+  const prog = document.getElementById('undo-progress');
+  prog.style.transition = 'none';
+  prog.style.width = '100%';
+  requestAnimationFrame(() => {
+    prog.style.transition = 'width 4s linear';
+    prog.style.width = '0%';
+  });
+
+  undoTimer = setTimeout(() => {
+    deleteNow(pendingDeleteId);
+    pendingDeleteId = null;
+    document.getElementById('undo-banner').classList.remove('show');
+  }, 4000);
+}
+
+async function deleteNow(id) {
+  if (!id) return;
+  await fetch(`${API}/tasks/${id}`, { method: 'DELETE' });
+}
+
+function undoComplete() {
+  clearTimeout(undoTimer);
+  undoTimer = null;
+  document.getElementById('undo-banner').classList.remove('show');
+  pendingDeleteId = null;
+  loadTasks();
+}
+
+async function deleteTask(id) {
+  tasks = tasks.filter(t => t.id !== id);
+  renderTasks();
+  await fetch(`${API}/tasks/${id}`, { method: 'DELETE' });
+}
+
+// ── Modal nova tarefa ───────────────────────────────────────
+function openAddTask() {
+  taskSelCatId = null;
+  document.getElementById('inp-task-title').value = '';
+  buildCsel('task-csel', null, null);
+  const dot = document.getElementById('task-csel-dot');
+  const txt = document.getElementById('task-csel-text');
+  dot.style.display = 'none';
+  txt.textContent = '— Escolha uma categoria —';
+  txt.classList.add('placeholder');
+  document.getElementById('add-task-modal').classList.add('open');
+  setTimeout(() => document.getElementById('inp-task-title').focus(), 50);
+}
+
+function closeAddTask() {
+  document.getElementById('add-task-modal').classList.remove('open');
+}
+
+async function saveTask() {
+  const titulo = document.getElementById('inp-task-title').value.trim();
+  if (!titulo) return;
+  await fetch(`${API}/tasks`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ titulo, categoria_id: taskSelCatId ? parseInt(taskSelCatId) : null })
+  });
+  closeAddTask();
+  await loadTasks();
+}
+
+document.getElementById('add-task-modal').addEventListener('click', function(e) { if(e.target===this) closeAddTask(); });
+document.getElementById('inp-task-title').addEventListener('keydown', e => { if(e.key==='Enter') saveTask(); });
 </script>
 </body>
 </html>

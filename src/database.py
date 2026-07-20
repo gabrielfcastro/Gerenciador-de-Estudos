@@ -35,6 +35,14 @@ def init_db():
             );
 
             INSERT OR IGNORE INTO settings (key, value) VALUES ('duracao_do_bloco', '4500');
+
+            CREATE TABLE IF NOT EXISTS tasks (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                titulo       TEXT    NOT NULL,
+                categoria_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+                status       TEXT    NOT NULL DEFAULT 'todo',
+                criada_em    TEXT    DEFAULT (datetime('now'))
+            );
         """)
         conn.commit()
         print("BD iniciado, path:", db_path)
