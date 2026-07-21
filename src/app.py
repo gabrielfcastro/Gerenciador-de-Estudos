@@ -134,6 +134,29 @@ class Handler(BaseHTTPRequestHandler):
             res = RepositorioCategorias.atualizar(cid, body["name"], body["color"])
             self.send_json({"id": res["id"], "name": res["nome"], "color": res["cor"]})
 
+        elif path.startswith("/api/sessions/"):
+            sid = path.split("/")[-1]
+            def calc_duracao(start_iso, end_iso):
+                t1 = datetime.fromisoformat(start_iso.replace('Z', '+00:00'))
+                t2 = datetime.fromisoformat(end_iso.replace('Z', '+00:00'))
+                return int((t2 - t1).total_seconds())
+            res = RepositorioSessoes.atualizar(
+                sid,
+                body.get("category_id"),
+                body["started_at"],
+                body["ended_at"],
+                body.get("note", ""),
+                calc_duracao
+            )
+            if res:
+                res["duration_seconds"] = res.get("duracao")
+                res["started_at"]       = res.get("inicio")
+                res["category_name"]    = res.get("categoria_nome")
+                res["category_color"]   = res.get("categoria_cor")
+                self.send_json(res)
+            else:
+                self.send_json({"error": "sessão não encontrada"}, 404)
+
     def do_DELETE(self):
         path = urlparse(self.path).path
 

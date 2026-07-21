@@ -54,7 +54,7 @@ class RepositorioSessoes:
         parametros = []
 
         if periodo == "today":
-            lista_de_filtros.append("date(s.inicio) = date('now')")
+            lista_de_filtros.append("date(s.inicio, 'localtime') = date('now', 'localtime')")
         elif periodo == "week":
             # Semana de calendário: segunda-feira 00:00 até domingo 23:59
             lista_de_filtros.append("s.inicio >= datetime('now', 'weekday 0', '-6 days')")
@@ -87,7 +87,7 @@ class RepositorioSessoes:
         parametros = []
 
         if periodo == "today":
-            lista_de_filtros.append("date(s.inicio) = date('now')")
+            lista_de_filtros.append("date(s.inicio, 'localtime') = date('now', 'localtime')")
             formato_data = "%Y-%m-%d"
 
         elif periodo == "week":
@@ -134,7 +134,7 @@ class RepositorioSessoes:
     def obter_estatisticas(periodo):
         lista_de_filtros = ["fim IS NOT NULL"]
         if periodo == "today":
-            lista_de_filtros.append("date(inicio) = date('now')")
+            lista_de_filtros.append("date(inicio, 'localtime') = date('now', 'localtime')")
         elif periodo == "week":
             lista_de_filtros.append("inicio >= datetime('now', 'weekday 0', '-6 days')")
             lista_de_filtros.append("inicio < datetime('now', 'weekday 0', '+1 day')")
@@ -174,6 +174,20 @@ class RepositorioSessoes:
             conn.execute(
                 "UPDATE sessions SET fim=?, duracao=? WHERE id=?",
                 (fim_iso, duracao, sessao_id)
+            )
+            conn.commit()
+            return dict(conn.execute("SELECT * FROM sessions WHERE id=?", (sessao_id,)).fetchone())
+
+    @staticmethod
+    def atualizar(sessao_id, categoria_id, inicio_iso, fim_iso, nota, funcao_calcular_duracao):
+        with get_db() as conn:
+            row = conn.execute("SELECT * FROM sessions WHERE id=?", (sessao_id,)).fetchone()
+            if not row:
+                return None
+            duracao = funcao_calcular_duracao(inicio_iso, fim_iso)
+            conn.execute(
+                "UPDATE sessions SET categoria_id=?, inicio=?, fim=?, duracao=?, nota=? WHERE id=?",
+                (categoria_id, inicio_iso, fim_iso, duracao, nota, sessao_id)
             )
             conn.commit()
             return dict(conn.execute("SELECT * FROM sessions WHERE id=?", (sessao_id,)).fetchone())
