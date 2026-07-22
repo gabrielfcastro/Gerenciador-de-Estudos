@@ -1,26 +1,11 @@
 import sys
 import os
-import sqlite3
-import pytest
 
+# Garante que src/ seja encontrado ao rodar pytest da raiz do projeto
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 
-@pytest.fixture(autouse=True)
-def banco_de_teste(tmp_path, monkeypatch):
-    """
-    Cria um banco SQLite temporário para cada teste.
-    Isola completamente os dados — nenhum teste afeta o banco real.
-    """
-    import database
-
-    db_temp = str(tmp_path / "test.db")
-    monkeypatch.setattr(database, "db_path", db_temp)
-    database.init_db()
-    yield db_temp
-
-
-# ── helpers reutilizáveis pelos testes ────────────────────────────────────────
+# ── helpers compartilhados pelos testes ───────────────────────────────────────
 
 def now_iso():
     from datetime import datetime, timezone

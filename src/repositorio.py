@@ -54,13 +54,11 @@ class RepositorioSessoes:
         parametros = []
 
         if periodo == "today":
-            lista_de_filtros.append("date(s.inicio) = date('now')")
+            lista_de_filtros.append("date(s.inicio, 'localtime') = date('now', 'localtime')")
         elif periodo == "week":
-            # Semana de calendário: segunda-feira 00:00 até domingo 23:59
             lista_de_filtros.append("s.inicio >= datetime('now', 'weekday 0', '-6 days')")
             lista_de_filtros.append("s.inicio < datetime('now', 'weekday 0', '+1 day')")
         elif periodo == "month":
-            # Mês de calendário: dia 1 até o último dia do mês atual
             lista_de_filtros.append("s.inicio >= datetime('now', 'start of month')")
             lista_de_filtros.append("s.inicio < datetime('now', 'start of month', '+1 month')")
         elif periodo in ["6months", "year"]:
@@ -76,7 +74,7 @@ class RepositorioSessoes:
             FROM sessions s
             LEFT JOIN categories c ON s.categoria_id = c.id
             WHERE {' AND '.join(lista_de_filtros)}
-            ORDER BY s.inicio DESC
+            ORDER BY s.id DESC
         """
         with get_db() as conn:
             return converter_linhas_para_lista(conn.execute(sql, parametros).fetchall())
@@ -87,20 +85,18 @@ class RepositorioSessoes:
         parametros = []
 
         if periodo == "today":
-            lista_de_filtros.append("date(s.inicio) = date('now')")
+            lista_de_filtros.append("date(s.inicio, 'localtime') = date('now', 'localtime')")
             formato_data = "%Y-%m-%d"
 
         elif periodo == "week":
-            # Segunda-feira da semana atual até domingo
             lista_de_filtros.append("s.inicio >= datetime('now', 'weekday 0', '-6 days')")
             lista_de_filtros.append("s.inicio < datetime('now', 'weekday 0', '+1 day')")
-            formato_data = "%Y-%m-%d"  # uma barra por dia (seg a dom)
+            formato_data = "%Y-%m-%d"
 
         elif periodo == "month":
-            # Mês de calendário, agrupado por semana (segunda-feira de cada semana)
             lista_de_filtros.append("s.inicio >= datetime('now', 'start of month')")
             lista_de_filtros.append("s.inicio < datetime('now', 'start of month', '+1 month')")
-            formato_data = "%Y-%W"     # agrupa por número da semana do ano
+            formato_data = "%Y-%W"
 
         elif periodo == "6months":
             lista_de_filtros.append("s.inicio >= datetime('now', '-6 months')")
@@ -110,7 +106,7 @@ class RepositorioSessoes:
             lista_de_filtros.append("s.inicio >= datetime('now', '-1 year')")
             formato_data = "%Y-%m"
 
-        else:  # all
+        else:
             formato_data = "%Y-%m"
 
         if categoria_id:
@@ -134,7 +130,7 @@ class RepositorioSessoes:
     def obter_estatisticas(periodo):
         lista_de_filtros = ["fim IS NOT NULL"]
         if periodo == "today":
-            lista_de_filtros.append("date(inicio) = date('now')")
+            lista_de_filtros.append("date(inicio, 'localtime') = date('now', 'localtime')")
         elif periodo == "week":
             lista_de_filtros.append("inicio >= datetime('now', 'weekday 0', '-6 days')")
             lista_de_filtros.append("inicio < datetime('now', 'weekday 0', '+1 day')")
@@ -164,13 +160,17 @@ class RepositorioSessoes:
             return dict(row)
 
     @staticmethod
-    def parar(sessao_id, fim_iso, funcao_calcular_duracao):
+    def parar(sessao_id, fim_iso, funcao_calcular_duracao, duracao_override=None):
         with get_db() as conn:
             row = conn.execute("SELECT * FROM sessions WHERE id=?", (sessao_id,)).fetchone()
             if not row:
                 return None
 
-            duracao = funcao_calcular_duracao(row["inicio"], fim_iso)
+            duracao = (
+                duracao_override
+                if duracao_override is not None
+                else funcao_calcular_duracao(row["inicio"], fim_iso)
+            )
             conn.execute(
                 "UPDATE sessions SET fim=?, duracao=? WHERE id=?",
                 (fim_iso, duracao, sessao_id)

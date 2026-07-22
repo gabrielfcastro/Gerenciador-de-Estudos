@@ -6,6 +6,16 @@ import pytest
 from conftest import now_iso, calc_duracao
 
 
+@pytest.fixture(autouse=True)
+def banco_de_teste(tmp_path, monkeypatch):
+    """Banco SQLite isolado por teste — não afeta o banco real."""
+    import database
+    db_temp = str(tmp_path / "test.db")
+    monkeypatch.setattr(database, "db_path", db_temp)
+    database.init_db()
+    yield db_temp
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # RepositorioConfiguracoes
 # ══════════════════════════════════════════════════════════════════════════════
@@ -96,9 +106,7 @@ class TestSessoes:
     def _criar_sessao_completa(self, cat_id=None, nota=""):
         from repositorio import RepositorioSessoes
         s = RepositorioSessoes.iniciar(cat_id, now_iso(), nota)
-        result = RepositorioSessoes.parar(s["id"], now_iso(), calc_duracao)
-        assert result is not None
-        return result
+        return RepositorioSessoes.parar(s["id"], now_iso(), calc_duracao)
 
     def test_iniciar_cria_sessao_sem_fim(self):
         from repositorio import RepositorioSessoes
@@ -116,6 +124,17 @@ class TestSessoes:
         assert res is not None
         assert res["duracao"] == 5400  # 1h30m em segundos
         assert res["fim"] is not None
+
+    def test_parar_com_duracao_real_excluindo_pausas(self):
+        """Duração enviada pelo frontend (excluindo pausas) deve sobrepor o cálculo de relógio."""
+        from repositorio import RepositorioSessoes
+        inicio = "2026-01-01T08:00:00+00:00"
+        fim    = "2026-01-01T09:30:00+00:00"  # 1h30m de relógio
+        s = RepositorioSessoes.iniciar(None, inicio, "")
+        duracao_real = 3000  # 50min estudados, 40min de pausa
+        res = RepositorioSessoes.parar(s["id"], fim, calc_duracao, duracao_real)
+        assert res is not None
+        assert res["duracao"] == 3000  # usa valor do frontend, não fim - inicio
 
     def test_parar_sessao_inexistente_retorna_none(self):
         from repositorio import RepositorioSessoes
