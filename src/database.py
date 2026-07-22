@@ -43,6 +43,13 @@ def init_db():
                 status       TEXT    NOT NULL DEFAULT 'todo',
                 criada_em    TEXT    DEFAULT (datetime('now'))
             );
+
+            CREATE TABLE IF NOT EXISTS schedule (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                dia_semana   TEXT    NOT NULL,
+                categoria_id INTEGER REFERENCES categories(id) ON DELETE CASCADE,
+                ordem        INTEGER DEFAULT 0
+            );
         """)
         conn.commit()
         print("BD iniciado, path:", db_path)

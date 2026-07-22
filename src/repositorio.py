@@ -54,7 +54,7 @@ class RepositorioSessoes:
         parametros = []
 
         if periodo == "today":
-            lista_de_filtros.append("date(s.inicio, 'localtime') = date('now', 'localtime')")
+            lista_de_filtros.append("date(s.inicio) = date('now')")
         elif periodo == "week":
             # Semana de calendário: segunda-feira 00:00 até domingo 23:59
             lista_de_filtros.append("s.inicio >= datetime('now', 'weekday 0', '-6 days')")
@@ -87,7 +87,7 @@ class RepositorioSessoes:
         parametros = []
 
         if periodo == "today":
-            lista_de_filtros.append("date(s.inicio, 'localtime') = date('now', 'localtime')")
+            lista_de_filtros.append("date(s.inicio) = date('now')")
             formato_data = "%Y-%m-%d"
 
         elif periodo == "week":
@@ -134,7 +134,7 @@ class RepositorioSessoes:
     def obter_estatisticas(periodo):
         lista_de_filtros = ["fim IS NOT NULL"]
         if periodo == "today":
-            lista_de_filtros.append("date(inicio, 'localtime') = date('now', 'localtime')")
+            lista_de_filtros.append("date(inicio) = date('now')")
         elif periodo == "week":
             lista_de_filtros.append("inicio >= datetime('now', 'weekday 0', '-6 days')")
             lista_de_filtros.append("inicio < datetime('now', 'weekday 0', '+1 day')")
@@ -226,5 +226,44 @@ class RepositorioTarefas:
     def deletar(tid):
         with get_db() as conn:
             conn.execute("DELETE FROM tasks WHERE id=?", (tid,))
+            conn.commit()
+            return {"ok": True}
+class RepositorioCronograma:
+    DIAS = ['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado', 'domingo']
+
+    @staticmethod
+    def listar():
+        with get_db() as conn:
+            rows = conn.execute("""
+                SELECT s.*, c.nome as categoria_nome, c.cor as categoria_cor
+                FROM schedule s
+                LEFT JOIN categories c ON s.categoria_id = c.id
+                ORDER BY s.dia_semana, s.ordem, s.id
+            """).fetchall()
+            return converter_linhas_para_lista(rows)
+
+    @staticmethod
+    def adicionar(dia_semana, categoria_id):
+        with get_db() as conn:
+            max_ordem = conn.execute(
+                "SELECT COALESCE(MAX(ordem), -1) as m FROM schedule WHERE dia_semana=?",
+                (dia_semana,)
+            ).fetchone()["m"]
+            cur = conn.execute(
+                "INSERT INTO schedule (dia_semana, categoria_id, ordem) VALUES (?,?,?)",
+                (dia_semana, categoria_id, max_ordem + 1)
+            )
+            conn.commit()
+            row = conn.execute("""
+                SELECT s.*, c.nome as categoria_nome, c.cor as categoria_cor
+                FROM schedule s LEFT JOIN categories c ON s.categoria_id = c.id
+                WHERE s.id=?
+            """, (cur.lastrowid,)).fetchone()
+            return dict(row)
+
+    @staticmethod
+    def remover(entry_id):
+        with get_db() as conn:
+            conn.execute("DELETE FROM schedule WHERE id=?", (entry_id,))
             conn.commit()
             return {"ok": True}

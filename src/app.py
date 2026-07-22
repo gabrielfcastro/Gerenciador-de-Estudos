@@ -5,8 +5,8 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from datetime import datetime, timezone
 
-from database import get_db, init_db
-from repositorio import RepositorioConfiguracoes, RepositorioCategorias, RepositorioSessoes, RepositorioTarefas
+from database import init_db
+from repositorio import RepositorioConfiguracoes, RepositorioCategorias, RepositorioSessoes, RepositorioTarefas, RepositorioCronograma
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
@@ -93,6 +93,14 @@ class Handler(BaseHTTPRequestHandler):
                 t["category_id"]    = t.get("categoria_id")
             self.send_json(tarefas)
 
+        elif path == "/api/schedule":
+            entries = RepositorioCronograma.listar()
+            for e in entries:
+                e["category_name"]  = e.get("categoria_nome")
+                e["category_color"] = e.get("categoria_cor")
+                e["category_id"]    = e.get("categoria_id")
+            self.send_json(entries)
+
     def do_POST(self):
         path = urlparse(self.path).path
         body = self.read_body()
@@ -109,6 +117,12 @@ class Handler(BaseHTTPRequestHandler):
 
         elif path == "/api/tasks":
             res = RepositorioTarefas.criar(body["titulo"], body.get("categoria_id"))
+            self.send_json(res, 201)
+
+        elif path == "/api/schedule":
+            res = RepositorioCronograma.adicionar(body["dia_semana"], body["categoria_id"])
+            res["category_name"]  = res.get("categoria_nome")
+            res["category_color"] = res.get("categoria_cor")
             self.send_json(res, 201)
 
         elif path == "/api/sessions/stop":
@@ -136,7 +150,7 @@ class Handler(BaseHTTPRequestHandler):
 
         elif path.startswith("/api/sessions/"):
             sid = path.split("/")[-1]
-            def calc_duracao(start_iso, end_iso):
+            def calc_duracao_put(start_iso, end_iso):
                 t1 = datetime.fromisoformat(start_iso.replace('Z', '+00:00'))
                 t2 = datetime.fromisoformat(end_iso.replace('Z', '+00:00'))
                 return int((t2 - t1).total_seconds())
@@ -146,7 +160,7 @@ class Handler(BaseHTTPRequestHandler):
                 body["started_at"],
                 body["ended_at"],
                 body.get("note", ""),
-                calc_duracao
+                calc_duracao_put
             )
             if res:
                 res["duration_seconds"] = res.get("duracao")
@@ -168,6 +182,9 @@ class Handler(BaseHTTPRequestHandler):
 
         elif path.startswith("/api/tasks/"):
             self.send_json(RepositorioTarefas.deletar(path.split("/")[-1]))
+
+        elif path.startswith("/api/schedule/"):
+            self.send_json(RepositorioCronograma.remover(path.split("/")[-1]))
 
 if __name__ == "__main__":
     init_db()

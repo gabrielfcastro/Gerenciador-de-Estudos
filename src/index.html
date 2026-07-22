@@ -434,6 +434,21 @@ header{
 .undo-banner.show{display:flex}
 .undo-banner .undo-btn{background:var(--accent-g);border:none;color:#fff;padding:5px 14px;border-radius:6px;cursor:pointer;font-weight:700;font-size:.8rem;font-family:inherit}
 .undo-progress{position:absolute;bottom:0;left:0;height:3px;background:var(--accent-g);border-radius:0 0 var(--r) var(--r);width:100%}
+/* ── cronograma ── */
+.cronograma-wrap{padding:28px;display:flex;flex-direction:column;gap:20px;flex:1;overflow-y:auto}
+.cronograma-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:12px}
+.dia-col{background:linear-gradient(160deg,var(--surface) 0%,#cdd1e0 100%);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
+.dia-header{padding:10px 12px;border-bottom:1px solid var(--border);background:var(--surface2)}
+.dia-nome{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)}
+.dia-pills{padding:10px;display:flex;flex-direction:column;gap:6px;flex:1;min-height:80px}
+.dia-pill{display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:var(--r-sm);border:1px solid transparent;position:relative;transition:all .15s}
+.dia-pill:hover .pill-del{opacity:1}
+.pill-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.pill-nome{font-size:.82rem;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill-del{background:none;border:none;cursor:pointer;color:inherit;font-size:.72rem;padding:0;opacity:0;transition:opacity .15s;flex-shrink:0;line-height:1}
+.dia-add{margin:6px 10px 10px;display:flex;align-items:center;gap:6px;padding:6px 9px;background:none;border:1px dashed var(--border2);border-radius:var(--r-sm);color:var(--text3);cursor:pointer;font-size:.78rem;font-weight:500;font-family:inherit;width:calc(100% - 20px);transition:all .18s}
+.dia-add:hover{border-color:var(--accent);color:var(--accent);background:rgba(124,111,247,.04)}
+.cronograma-empty{color:var(--text3);font-size:.78rem;text-align:center;padding:12px 8px}
 </style>
 </head>
 <body>
@@ -443,6 +458,7 @@ header{
   <nav class="header-nav">
     <button class="nav-tab active" onclick="switchView('timer',this)">⏱ Timer</button>
     <button class="nav-tab" onclick="switchView('kanban',this)">📋 Tarefas</button>
+    <button class="nav-tab" onclick="switchView('cronograma',this)">📅 Planejamento</button>
   </nav>
   <div class="conn">
     <div class="conn-dot" id="conn-dot"></div>
@@ -579,6 +595,15 @@ header{
   </div>
 </div>
 
+<!-- ── Cronograma ── -->
+<div id="view-cronograma" class="view">
+  <div class="cronograma-wrap">
+    <div class="cronograma-grid" id="cronograma-grid">
+      <!-- preenchido pelo JS -->
+    </div>
+  </div>
+</div>
+
 <!-- undo banner -->
 <div class="undo-banner" id="undo-banner">
   <span id="undo-text">Tarefa concluída</span>
@@ -589,6 +614,27 @@ header{
 <div class="alarm" id="alarm">
   ⏰ Tempo de bloco encerrado!
   <button onclick="dismissAlarm()">OK</button>
+</div>
+
+<div class="overlay" id="add-schedule-modal">
+  <div class="modal" style="width:340px">
+    <h3 id="add-schedule-title">Adicionar matéria</h3>
+    <div class="form-group">
+      <label>Matéria</label>
+      <div class="csel" id="sched-csel">
+        <button class="csel-trigger" onclick="toggleCsel('sched-csel')">
+          <span class="csel-dot" id="sched-csel-dot" style="display:none"></span>
+          <span class="csel-text placeholder" id="sched-csel-text">— Escolha uma categoria —</span>
+          <span class="csel-arrow">▼</span>
+        </button>
+        <div class="csel-menu" id="sched-csel-menu"></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeAddSchedule()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveScheduleEntry()">Adicionar</button>
+    </div>
+  </div>
 </div>
 
 <div class="overlay" id="add-task-modal">
@@ -725,6 +771,9 @@ let tasks         = [];
 let draggedId     = null;
 let undoTimer     = null;
 let pendingDeleteId = null;
+let scheduleEntries = [];
+let schedDia      = null;
+let schedCatId    = null;
 
 window.addEventListener('DOMContentLoaded', async () => {
   buildSwatches();
@@ -873,6 +922,7 @@ function pickCsel(cselId, id, name, color) {
   if (cselId === 'cat-csel')  selCatId     = id;
   if (cselId === 'edit-csel') editSelCatId = id;
   if (cselId === 'task-csel') taskSelCatId = id;
+  if (cselId === 'sched-csel') schedCatId  = id;
 
   // fecha o menu
   document.getElementById(cselId).classList.remove('open');
@@ -1342,6 +1392,7 @@ function switchView(view, btn) {
   document.getElementById('view-' + view).classList.add('active');
   btn.classList.add('active');
   if (view === 'kanban') loadTasks();
+  if (view === 'cronograma') loadCronograma();
 }
 
 // ── Tasks ───────────────────────────────────────────────────
@@ -1485,6 +1536,92 @@ async function saveTask() {
 
 document.getElementById('add-task-modal').addEventListener('click', function(e) { if(e.target===this) closeAddTask(); });
 document.getElementById('inp-task-title').addEventListener('keydown', e => { if(e.key==='Enter') saveTask(); });
+
+// ── Cronograma ──────────────────────────────────────────────
+const DIAS_CONFIG = [
+  { key: 'segunda',  label: 'Segunda' },
+  { key: 'terca',    label: 'Terça'   },
+  { key: 'quarta',   label: 'Quarta'  },
+  { key: 'quinta',   label: 'Quinta'  },
+  { key: 'sexta',    label: 'Sexta'   },
+  { key: 'sabado',   label: 'Sábado'  },
+  { key: 'domingo',  label: 'Domingo' },
+];
+
+async function loadCronograma() {
+  try {
+    scheduleEntries = await (await fetch(`${API}/schedule`)).json();
+    renderCronograma();
+  } catch {}
+}
+
+function renderCronograma() {
+  const grid = document.getElementById('cronograma-grid');
+  grid.innerHTML = DIAS_CONFIG.map(({ key, label }) => {
+    const entries = scheduleEntries.filter(e => e.dia_semana === key);
+    const pillsHtml = entries.length
+      ? entries.map(e => {
+          const color = e.category_color || '#8b90a8';
+          const name  = e.category_name  || 'Sem nome';
+          const bg    = color + '22';
+          return `<div class="dia-pill" style="background:${bg};border-color:${color}55">
+            <div class="pill-dot" style="background:${color}"></div>
+            <span class="pill-nome" style="color:${color}">${esc(name)}</span>
+            <button class="pill-del" style="color:${color}" onclick="removeScheduleEntry(${e.id})" title="Remover">✕</button>
+          </div>`;
+        }).join('')
+      : `<div class="cronograma-empty">Vazio</div>`;
+
+    return `<div class="dia-col">
+      <div class="dia-header"><span class="dia-nome">${label}</span></div>
+      <div class="dia-pills">${pillsHtml}</div>
+      <button class="dia-add" onclick="openAddSchedule('${key}','${label}')">＋ Matéria</button>
+    </div>`;
+  }).join('');
+}
+
+function openAddSchedule(dia, label) {
+  schedDia   = dia;
+  schedCatId = null;
+  buildCsel('sched-csel', null, null);
+  const dot = document.getElementById('sched-csel-dot');
+  const txt = document.getElementById('sched-csel-text');
+  dot.style.display = 'none';
+  txt.textContent   = '— Escolha uma categoria —';
+  txt.classList.add('placeholder');
+  document.getElementById('add-schedule-title').textContent = `Adicionar em ${label}`;
+  document.getElementById('add-schedule-modal').classList.add('open');
+}
+
+function closeAddSchedule() {
+  document.getElementById('add-schedule-modal').classList.remove('open');
+  schedDia = null;
+}
+
+async function saveScheduleEntry() {
+  if (!schedDia || !schedCatId) return;
+  const res = await fetch(`${API}/schedule`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ dia_semana: schedDia, categoria_id: parseInt(schedCatId) })
+  });
+  if (res.ok) {
+    const entry = await res.json();
+    scheduleEntries.push(entry);
+    renderCronograma();
+  }
+  closeAddSchedule();
+}
+
+async function removeScheduleEntry(id) {
+  await fetch(`${API}/schedule/${id}`, { method: 'DELETE' });
+  scheduleEntries = scheduleEntries.filter(e => e.id !== id);
+  renderCronograma();
+}
+
+document.getElementById('add-schedule-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeAddSchedule();
+});
 </script>
 </body>
 </html>
