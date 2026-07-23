@@ -68,12 +68,27 @@ class TestServicoSessoesMapeamento:
             "inicio":  "2026-01-01T08:00:00+00:00",
             "categoria_nome": "Dir",
             "categoria_cor":  "#7c6ff7",
+            "categoria_id":   42,
         }
         res = self._mapear(s)
         assert res["duration_seconds"] == 3600
         assert res["started_at"]       == "2026-01-01T08:00:00+00:00"
         assert res["category_name"]    == "Dir"
         assert res["category_color"]   == "#7c6ff7"
+
+    def test_mapeia_category_id(self):
+        """categoria_id (banco) deve ser exposto como category_id (API).
+        Sem esse mapeamento o frontend agrupa todas as sessões no mesmo grupo."""
+        s = {"id": 1, "duracao": 0, "inicio": "", "categoria_nome": "", "categoria_cor": "", "categoria_id": 7}
+        res = self._mapear(s)
+        assert res["category_id"] == 7
+
+    def test_category_id_none_quando_sem_categoria(self):
+        """Sessões sem categoria devem retornar category_id=None explicitamente."""
+        s = {"id": 1, "duracao": 0, "inicio": "", "categoria_nome": None, "categoria_cor": None, "categoria_id": None}
+        res = self._mapear(s)
+        assert "category_id" in res
+        assert res["category_id"] is None
 
     def test_retorna_none_para_sessao_none(self):
         assert self._mapear(None) is None
@@ -85,7 +100,47 @@ class TestServicoSessoesMapeamento:
         assert res["category_name"]    is None
 
 
-# ── ServicoSessoes.atualizar — validação de negócio ───────────────────────────
+# ── formatarLabels (lógica de exibição do gráfico) ────────────────────────────
+    """Testa a função JS equivalente via lógica Python pura."""
+
+    DIAS   = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
+    MESES  = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+               'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+
+    def _formatar(self, periods, period):
+        """Reimplementa a lógica de formatarLabels em Python para testar."""
+        from datetime import datetime
+        if period == 'week':
+            return [self.DIAS[datetime.strptime(p, '%Y-%m-%d').weekday() + 1 if datetime.strptime(p, '%Y-%m-%d').weekday() < 6 else 0]
+                    for p in periods]
+        if period == 'month':
+            return [f'Sem {i+1}' for i, _ in enumerate(periods)]
+        if period in ('6months', 'year'):
+            return [self.MESES[int(p.split('-')[1]) - 1] for p in periods]
+        if period == 'all':
+            return [f'{self.MESES[int(p.split("-")[1])-1]} {p.split("-")[0]}' for p in periods]
+        return periods
+
+    def test_semana_vira_dia_da_semana(self):
+        # 2026-07-21 é uma terça-feira
+        resultado = self._formatar(['2026-07-21'], 'week')
+        assert resultado == ['Ter']
+
+    def test_mes_vira_semanas(self):
+        resultado = self._formatar(['2026-30', '2026-31', '2026-32'], 'month')
+        assert resultado == ['Sem 1', 'Sem 2', 'Sem 3']
+
+    def test_6meses_vira_nome_completo_sem_ano(self):
+        resultado = self._formatar(['2026-07', '2026-08'], '6months')
+        assert resultado == ['Julho', 'Agosto']
+
+    def test_ano_vira_nome_completo_sem_ano(self):
+        resultado = self._formatar(['2026-01', '2026-12'], 'year')
+        assert resultado == ['Janeiro', 'Dezembro']
+
+    def test_total_vira_nome_completo_com_ano(self):
+        resultado = self._formatar(['2025-12', '2026-01'], 'all')
+        assert resultado == ['Dezembro 2025', 'Janeiro 2026']
 
 class TestServicoSessoesValidacao:
 

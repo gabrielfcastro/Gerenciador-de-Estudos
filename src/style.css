@@ -458,3 +458,22 @@ header{
 .sess-child-time{font-size:.75rem;color:var(--text2);white-space:nowrap;font-variant-numeric:tabular-nums}
 .sess-child-note{font-size:.72rem;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sess-child-dur{font-size:.8rem;font-weight:600;color:var(--text2);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* ── grupos de sessões ── */
+.sess-group{border-bottom:1px solid var(--border)}
+.sess-group:last-child{border-bottom:none}
+.sess-group-header{display:flex;align-items:center;gap:10px;padding:12px 8px;border-radius:var(--r-sm);cursor:pointer;transition:background .15s}
+.sess-group-header:hover{background:var(--surface2)}
+.sess-group-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.sess-group-name{flex:1;font-size:.87rem;font-weight:700;color:var(--text)}
+.sess-group-meta{font-size:.72rem;color:var(--text2);white-space:nowrap}
+.sess-group-total{font-size:.9rem;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
+.sess-group-arrow{font-size:.65rem;color:var(--text3);flex-shrink:0;transition:transform .2s;display:inline-block}
+.sess-group-arrow.open{transform:rotate(90deg)}
+.sess-group-children{padding:0 0 8px 20px}
+.sess-child{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:var(--r-sm);transition:background .15s}
+.sess-child:hover{background:var(--surface2)}
+.sess-child-left{flex:1;min-width:0;display:flex;align-items:center;gap:8px}
+.sess-child-time{font-size:.75rem;color:var(--text2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.sess-child-note{font-size:.72rem;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sess-child-dur{font-size:.8rem;font-weight:600;color:var(--text2);font-variant-numeric:tabular-nums;white-space:nowrap}

@@ -55,6 +55,7 @@ class ServicoSessoes:
     def _mapear(sessao: dict | None) -> dict | None:
         if sessao is None:
             return None
+        sessao["category_id"]      = sessao.get("categoria_id")
         sessao["duration_seconds"] = sessao.get("duracao")
         sessao["started_at"]       = sessao.get("inicio")
         sessao["category_name"]    = sessao.get("categoria_nome")

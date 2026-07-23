@@ -403,6 +403,27 @@ function beep() {
   } catch{}
 }
 
+// ── Formatação de labels do gráfico ───────────────────────
+const DIAS_SEMANA = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const MESES_NOMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                     'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+function formatarLabels(periods, period) {
+  if (period === 'week') {
+    return periods.map(p => { const d = new Date(p + 'T12:00:00'); return DIAS_SEMANA[d.getDay()]; });
+  }
+  if (period === 'month') {
+    return periods.map((_, i) => `Semana ${i + 1}`);
+  }
+  if (period === '6months' || period === 'year') {
+    return periods.map(p => { const [, mes] = p.split('-'); return MESES_NOMES[parseInt(mes) - 1]; });
+  }
+  if (period === 'all') {
+    return periods.map(p => { const [ano, mes] = p.split('-'); return `${MESES_NOMES[parseInt(mes) - 1]} ${ano}`; });
+  }
+  return periods;
+}
+
 async function loadChart() {
   try { renderChart(await (await fetch(`${API}/chart?period=${currentPeriod}`)).json()); }
   catch {}
@@ -457,6 +478,7 @@ function renderChart(data) {
   const ctxBar = document.getElementById('chart').getContext('2d');
 
   const periods  = [...new Set(data.map(d=>d.period_key))];
+  const labels   = formatarLabels(periods, currentPeriod);
   const catNames = [...new Set(data.filter(d=>d.category_name).map(d=>d.category_name))];
   const datasets = catNames.map(name => {
     const color = data.find(d=>d.category_name===name)?.category_color || '#7c6ff7';
@@ -470,7 +492,7 @@ function renderChart(data) {
   if (uncatData.some(v=>v>0)) datasets.push({ label:'Sem categoria', data:uncatData, backgroundColor:'#8b90a8cc', borderColor:'#8b90a8', borderWidth:1, borderRadius:6 });
 
   chart = new Chart(ctxBar, {
-    type:'bar', data:{ labels:periods, datasets },
+    type:'bar', data:{ labels, datasets },
     options:{
       responsive:true, maintainAspectRatio:false,
       plugins:{
@@ -501,34 +523,76 @@ async function loadStats() {
   } catch {}
 }
 
+// ── Sessões agrupadas por matéria ──────────────────────────
+let openGroups = new Set();
+
 async function loadSessions() {
-  try { renderSessions((await (await fetch(`${API}/sessions?period=all`)).json()).slice(0,4)); }
-  catch {}
+  try {
+    const all = await (await fetch(`${API}/sessions?period=${currentPeriod}`)).json();
+    renderSessions(all);
+  } catch {}
+}
+
+function groupSessions(list) {
+  const map = new Map();
+  for (const s of list) {
+    const key = s.category_id ?? s.categoria_id ?? 'sem-cat';
+    if (!map.has(key)) {
+      map.set(key, {
+        category_id:    s.category_id ?? s.categoria_id,
+        category_name:  s.category_name  || 'Sem categoria',
+        category_color: s.category_color || '#8b90a8',
+        total_seconds:  0,
+        sessions:       [],
+      });
+    }
+    const g = map.get(key);
+    g.total_seconds += s.duration_seconds || 0;
+    g.sessions.push(s);
+  }
+  return [...map.values()].sort((a, b) => b.total_seconds - a.total_seconds);
 }
 
 function renderSessions(list) {
   const el = document.getElementById('sess-list');
   if (!list.length) { el.innerHTML='<div class="empty">📚 Nenhuma sessão neste período.</div>'; return; }
-  el.innerHTML = list.map(s => {
-    const color = s.category_color || '#8b90a8';
-    const name  = s.category_name  || 'Sem categoria';
-    const dur   = s.duration_seconds ? fmtDuration(s.duration_seconds) : '—';
-    const formatoData = s.started_at || s.inicio;
-    const dt = formatoData ? new Date(formatoData.replace(' ', 'T')).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
-    const noteHtml = s.note ? `<div class="sess-note">📝 ${esc(s.note)}</div>` : '';
-
-    return `<div class="sess-item">
-      <div class="sess-bar" style="background:${color}"></div>
-      <div class="sess-info">
-        <div class="sess-cat">${esc(name)}</div>
-        ${noteHtml}
-        <div class="sess-time">${dt}</div>
+  const groups = groupSessions(list);
+  el.innerHTML = groups.map(g => {
+    const isOpen     = openGroups.has(g.category_id);
+    const count      = g.sessions.length;
+    const total      = fmtDuration(g.total_seconds);
+    const labelCount = count === 1 ? '1 sessão' : `${count} sessões`;
+    const children   = g.sessions.map(s => {
+      const dur  = s.duration_seconds ? fmtDuration(s.duration_seconds) : '—';
+      const raw  = s.started_at || s.inicio || '';
+      const dt   = raw ? new Date(raw.replace(' ','T')).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+      const note = s.note ? `<span class="sess-child-note">📝 ${esc(s.note)}</span>` : '';
+      return `<div class="sess-child">
+        <div class="sess-child-left">
+          <span class="sess-child-time">${dt}</span>${note}
+        </div>
+        <span class="sess-child-dur">${dur}</span>
+        <button class="sess-edit" onclick="openEditSess(${s.id})" title="Editar">✏</button>
+        <button class="sess-del"  onclick="deleteSess(${s.id})"   title="Excluir">✕</button>
+      </div>`;
+    }).join('');
+    return `<div class="sess-group">
+      <div class="sess-group-header" onclick="toggleGroup(${JSON.stringify(g.category_id)})">
+        <div class="sess-group-dot" style="background:${g.category_color}"></div>
+        <span class="sess-group-name">${esc(g.category_name)}</span>
+        <span class="sess-group-meta">${labelCount}</span>
+        <span class="sess-group-total">${total}</span>
+        <span class="sess-group-arrow ${isOpen?'open':''}">▶</span>
       </div>
-      <div class="sess-dur">${dur}</div>
-      <button class="sess-edit" onclick="openEditSess(${s.id})" title="Editar">✏</button>
-      <button class="sess-del"  onclick="deleteSess(${s.id})"  title="Excluir">✕</button>
+      <div class="sess-group-children" style="display:${isOpen?'block':'none'}">${children}</div>
     </div>`;
   }).join('');
+}
+
+function toggleGroup(categoryId) {
+  if (openGroups.has(categoryId)) openGroups.delete(categoryId);
+  else openGroups.add(categoryId);
+  loadSessions();
 }
 
 async function deleteSess(id) {
