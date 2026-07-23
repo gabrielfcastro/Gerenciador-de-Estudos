@@ -32,6 +32,7 @@ body{
   -webkit-font-smoothing:antialiased;
 }
 
+/* ── header ── */
 header{
   padding:14px 28px;
   border-bottom:1px solid var(--border);
@@ -55,8 +56,10 @@ header{
 }
 .btn-settings:hover{color:var(--text);border-color:var(--accent);background:var(--surface3)}
 
+/* ── layout ── */
 .main{display:grid;grid-template-columns:272px 1fr;flex:1;min-height:0}
 
+/* ── sidebar ── */
 .sidebar{
   border-right:1px solid var(--border);
   padding:20px 14px;
@@ -98,8 +101,10 @@ header{
 }
 .btn-add-cat:hover{border-color:var(--accent);color:var(--accent);background:rgba(124,111,247,.06)}
 
+/* ── content ── */
 .content{padding:28px;display:flex;flex-direction:column;gap:20px;overflow-y:auto}
 
+/* ── card base ── */
 .card{
   background:linear-gradient(160deg, var(--surface) 0%, #cdd1e0 100%);
   border:1px solid var(--border);
@@ -107,6 +112,7 @@ header{
   box-shadow:var(--shadow);
 }
 
+/* ── timer card ── */
 .timer-card{padding:28px}
 .timer-row1{display:flex;align-items:flex-end;gap:14px;margin-bottom:14px}
 .field{display:flex;flex-direction:column;gap:6px;flex:1}
@@ -125,6 +131,7 @@ header{
 }
 .field textarea{resize:none;line-height:1.5}
 
+/* active badge */
 .active-badge{
   display:none;align-items:center;gap:7px;
   padding:4px 12px;border-radius:99px;
@@ -135,6 +142,7 @@ header{
 }
 .active-badge .dot{width:8px;height:8px;border-radius:50%}
 
+/* paused tag */
 .paused-tag{
   display:none;align-items:center;gap:6px;padding:3px 10px;
   border-radius:99px;font-size:.73rem;font-weight:700;
@@ -143,9 +151,11 @@ header{
   letter-spacing:.02em;
 }
 
+/* block status */
 .block-status{font-size:.77rem;color:var(--text2);margin-bottom:14px;display:flex;align-items:center;gap:6px}
 .block-status .bval{color:var(--text);font-weight:700}
 
+/* clock */
 .timer-display{display:flex;align-items:center;gap:24px;margin-bottom:20px}
 .clock-wrap{display:flex;align-items:center}
 .clock{
@@ -157,6 +167,7 @@ header{
 .clock.running{text-shadow:0 0 32px currentColor}
 .clock.paused{color:var(--pause) !important;text-shadow:none}
 
+/* progress bar */
 .progress-wrap{flex:1}
 .progress-labels{display:flex;justify-content:space-between;font-size:.7rem;font-weight:500;color:var(--text2);margin-bottom:7px;text-transform:uppercase;letter-spacing:.04em}
 .progress-track{height:10px;background:var(--surface3);border-radius:99px;overflow:hidden;box-shadow:inset 0 1px 3px rgba(100,110,160,.15)}
@@ -167,6 +178,7 @@ header{
 }
 .progress-fill.over{background:linear-gradient(90deg,var(--amber),#f59e0b);box-shadow:0 0 10px rgba(251,191,36,.5)}
 
+/* buttons */
 .timer-controls{display:flex;gap:10px}
 .btn{
   padding:10px 22px;border-radius:var(--r-sm);border:none;
@@ -189,6 +201,7 @@ header{
 .btn-ghost:hover{color:var(--text);border-color:var(--border2);background:var(--surface3)}
 .btn:disabled{opacity:.3;cursor:not-allowed;transform:none !important;box-shadow:none !important}
 
+/* ── stat cards ── */
 .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 .stat-card{padding:20px 22px;position:relative;overflow:hidden}
 .stat-card::before{
@@ -200,6 +213,7 @@ header{
 .stat-label{font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);margin-bottom:8px}
 .stat-value{font-size:1.55rem;font-weight:800;letter-spacing:-.04em}
 
+/* ── chart card ── */
 .chart-card{padding:24px}
 .chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
 .chart-head h2{font-size:.95rem;font-weight:700}
@@ -227,6 +241,7 @@ header{
 .pie-legend-name{flex:1;color:var(--text2);font-weight:500}
 .pie-legend-val{font-weight:700;font-variant-numeric:tabular-nums;color:var(--text)}
 
+/* ── sessions card ── */
 .sessions-card{padding:22px}
 .sessions-card h2{font-size:.95rem;font-weight:700;margin-bottom:16px}
 .sess-item{
@@ -255,6 +270,7 @@ header{
 .sess-del:hover{color:var(--red);background:rgba(248,113,113,.1)}
 .empty{text-align:center;padding:40px 20px;color:var(--text2);font-size:.85rem}
 
+/* ── alarm ── */
 .alarm{
   display:none;position:fixed;bottom:24px;right:24px;
   background:linear-gradient(135deg,#f59e0b,var(--amber));
@@ -269,6 +285,7 @@ header{
   padding:5px 14px;border-radius:7px;cursor:pointer;font-weight:800;font-family:inherit;
 }
 
+/* ── overlays & modals ── */
 .overlay{
   display:none;position:fixed;inset:0;
   background:rgba(140,148,175,.55);backdrop-filter:blur(6px);
@@ -315,6 +332,7 @@ header{
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .edit-hint{font-size:.73rem;color:var(--text2);margin-top:4px;line-height:1.5}
 
+/* ── custom select ── */
 .csel{position:relative;user-select:none}
 .csel-trigger{
   width:100%;display:flex;align-items:center;gap:9px;
@@ -355,23 +373,28 @@ header{
 .csel-none:hover{background:var(--surface2)}
 .csel-none.active{background:rgba(124,111,247,.08)}
 
+/* scrollbar no menu */
 .csel-menu::-webkit-scrollbar{width:4px}
 .csel-menu::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
 
+/* scrollbar */
 ::-webkit-scrollbar{width:6px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
 ::-webkit-scrollbar-thumb:hover{background:var(--text3)}
 
+/* ── nav tabs ── */
 .header-nav{display:flex;gap:3px;margin-left:18px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);padding:3px}
 .nav-tab{padding:5px 14px;border-radius:6px;border:none;background:none;color:var(--text2);font-size:.78rem;font-weight:600;font-family:inherit;cursor:pointer;transition:all .18s}
 .nav-tab.active{background:var(--accent-g);color:#fff;box-shadow:0 2px 8px rgba(124,111,247,.4)}
 .nav-tab:not(.active):hover{color:var(--text);background:var(--surface3)}
 
+/* ── views ── */
 .view{display:none}
 .view.active{display:flex;flex:1;min-height:0;flex-direction:column}
 #view-timer.active .main{flex:1;min-height:0}
 
+/* ── kanban ── */
 .kanban-wrap{padding:28px;display:grid;grid-template-columns:1fr 1fr;gap:20px;overflow-y:auto;flex:1}
 .kanban-col{display:flex;flex-direction:column;background:linear-gradient(160deg,var(--surface) 0%,#cdd1e0 100%);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
 .kanban-col-header{padding:14px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:var(--surface2)}
@@ -396,11 +419,12 @@ header{
 .kanban-add{display:flex;align-items:center;gap:7px;padding:9px 12px;background:none;border:1px dashed var(--border2);border-radius:var(--r-sm);color:var(--text2);cursor:pointer;font-size:.83rem;font-weight:500;font-family:inherit;width:100%;transition:all .18s}
 .kanban-add:hover{border-color:var(--accent);color:var(--accent);background:rgba(124,111,247,.04)}
 
+/* ── undo banner ── */
 .undo-banner{display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:linear-gradient(160deg,var(--surface) 0%,#c8ccd8 100%);border:1px solid var(--border2);border-radius:var(--r);padding:13px 20px;align-items:center;gap:14px;font-size:.87rem;font-weight:600;color:var(--text);box-shadow:0 8px 28px rgba(80,90,130,.22);z-index:400;white-space:nowrap;overflow:hidden}
 .undo-banner.show{display:flex}
 .undo-banner .undo-btn{background:var(--accent-g);border:none;color:#fff;padding:5px 14px;border-radius:6px;cursor:pointer;font-weight:700;font-size:.8rem;font-family:inherit}
 .undo-progress{position:absolute;bottom:0;left:0;height:3px;background:var(--accent-g);border-radius:0 0 var(--r) var(--r);width:100%}
-
+/* ── cronograma ── */
 .cronograma-wrap{padding:28px;display:flex;flex-direction:column;gap:20px;flex:1;overflow-y:auto}
 .cronograma-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:12px}
 .dia-col{background:linear-gradient(160deg,var(--surface) 0%,#cdd1e0 100%);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
@@ -415,3 +439,22 @@ header{
 .dia-add{margin:6px 10px 10px;display:flex;align-items:center;gap:6px;padding:6px 9px;background:none;border:1px dashed var(--border2);border-radius:var(--r-sm);color:var(--text3);cursor:pointer;font-size:.78rem;font-weight:500;font-family:inherit;width:calc(100% - 20px);transition:all .18s}
 .dia-add:hover{border-color:var(--accent);color:var(--accent);background:rgba(124,111,247,.04)}
 .cronograma-empty{color:var(--text3);font-size:.78rem;text-align:center;padding:12px 8px}
+
+/* ── grupos de sessões ── */
+.sess-group{border-bottom:1px solid var(--border)}
+.sess-group:last-child{border-bottom:none}
+.sess-group-header{display:flex;align-items:center;gap:10px;padding:12px 8px;border-radius:var(--r-sm);cursor:pointer;transition:background .15s}
+.sess-group-header:hover{background:var(--surface2)}
+.sess-group-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.sess-group-name{flex:1;font-size:.87rem;font-weight:700;color:var(--text)}
+.sess-group-meta{font-size:.72rem;color:var(--text2);white-space:nowrap}
+.sess-group-total{font-size:.9rem;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
+.sess-group-arrow{font-size:.65rem;color:var(--text3);flex-shrink:0;transition:transform .2s;display:inline-block}
+.sess-group-arrow.open{transform:rotate(90deg)}
+.sess-group-children{padding:0 0 8px 20px}
+.sess-child{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:var(--r-sm);transition:background .15s}
+.sess-child:hover{background:var(--surface2)}
+.sess-child-left{flex:1;min-width:0;display:flex;align-items:center;gap:8px}
+.sess-child-time{font-size:.75rem;color:var(--text2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.sess-child-note{font-size:.72rem;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sess-child-dur{font-size:.8rem;font-weight:600;color:var(--text2);font-variant-numeric:tabular-nums;white-space:nowrap}
