@@ -293,6 +293,10 @@ async function startTimer() {
   document.getElementById('progress-fill').style.background = color;
   if (blockSeconds > 0) document.getElementById('progress-wrap').style.display = 'block';
 
+  const timerCard = document.querySelector('.timer-card');
+  timerCard.style.setProperty('--timer-color', color);
+  timerCard.classList.add('timer-running');
+
   document.getElementById('btn-start').disabled = true;
   document.getElementById('btn-pause').disabled = false;
   document.getElementById('btn-stop').disabled  = false;
@@ -332,6 +336,7 @@ function togglePause() {
     btn.classList.replace('btn-pause','btn-primary');
     clockEl.classList.add('paused');
     pausedTag.style.display = 'flex';
+    document.querySelector('.timer-card').classList.replace('timer-running','timer-paused');
   } else {
     activeSession.startedAt = Date.now();
     isPaused = false;
@@ -339,6 +344,7 @@ function togglePause() {
     btn.classList.replace('btn-primary','btn-pause');
     clockEl.classList.remove('paused');
     pausedTag.style.display = 'none';
+    document.querySelector('.timer-card').classList.replace('timer-paused','timer-running');
   }
   tick();
 }
@@ -372,6 +378,9 @@ async function stopTimer() {
   document.getElementById('clock').style.color    = '';
   document.getElementById('clock').classList.remove('paused');
   document.getElementById('clock').classList.remove('running');
+  const timerCard = document.querySelector('.timer-card');
+  timerCard.classList.remove('timer-running','timer-paused');
+  timerCard.style.removeProperty('--timer-color');
   document.getElementById('paused-tag').style.display = 'none';
   document.getElementById('btn-start').disabled   = false;
   document.getElementById('btn-pause').disabled   = true;

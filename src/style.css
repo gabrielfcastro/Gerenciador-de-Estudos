@@ -113,7 +113,19 @@ header{
 }
 
 /* ── timer card ── */
-.timer-card{padding:28px}
+@keyframes timer-pulse {
+  0%,100%{ box-shadow:0 0 0 0 var(--timer-color, rgba(124,111,247,.4)), var(--shadow); }
+  50%     { box-shadow:0 0 0 7px transparent, var(--shadow); }
+}
+.timer-card{padding:28px;transition:border-color .4s}
+.timer-card.timer-running{
+  border-color:var(--timer-color, var(--accent));
+  animation:timer-pulse 2s ease-in-out infinite;
+}
+.timer-card.timer-paused{
+  border-color:var(--pause);
+  animation:none;
+}
 .timer-row1{display:flex;align-items:flex-end;gap:14px;margin-bottom:14px}
 .field{display:flex;flex-direction:column;gap:6px;flex:1}
 .field label{font-size:.7rem;font-weight:600;color:var(--text2);letter-spacing:.04em;text-transform:uppercase}
