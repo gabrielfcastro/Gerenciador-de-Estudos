@@ -24,44 +24,34 @@ Aplicação local de gerenciamento de tempo e tarefas de estudo, inspirada no Cl
 
 O projeto segue uma arquitetura **cliente–servidor local** com quatro camadas bem definidas:
 
-```mermaid
 flowchart LR
 
-    subgraph FE["🌐  Frontend"]
-        html["index.html
-        HTML · CSS · JavaScript"]
+    subgraph FE["🌐 Frontend"]
+        html["HTML · CSS · JavaScript"]
     end
 
-    subgraph BE["⚙️  Backend"]
+    subgraph BE["⚙️ Backend"]
         app["app.py
-        Servidor HTTP · Roteador REST"]
-        svc["servicos.py
-        Regras de negócio · Mapeamento"]
-        repo["repositorio.py
-        RepositorioCategorias
-        RepositorioSessoes
-        RepositorioTarefas
-        RepositorioCronograma
-        RepositorioConfiguracoes"]
-        app --> svc --> repo
+        API REST"]
+        svc["Serviços
+        Regras de negócio"]
+        repo["Repositórios
+        Acesso aos dados"]
+
+        app --> svc
+        svc --> repo
     end
 
-    subgraph DATA["🗄️  Dados"]
-        db["database.py
-        Conexão · Inicialização do schema"]
-        sqlite[("gerenciador_de_estudos.db
-        categories · sessions
-        settings · tasks · schedule")]
-        db --> sqlite
+    subgraph DB["🗄️ Banco de Dados"]
+        sqlite[("SQLite")]
     end
 
-    FE -->|"HTTP / JSON"| BE
-    BE --> DATA
+    html -->|"HTTP / JSON"| app
+    repo --> sqlite
 
-    style FE   fill:#ede9fe,stroke:#7c6ff7,color:#1c1f30
-    style BE   fill:#dbeafe,stroke:#2563eb,color:#1c1f30
-    style DATA fill:#d1fae5,stroke:#059669,color:#1c1f30
-```
+    style FE fill:#ede9fe,stroke:#7c6ff7,color:#1c1f30
+    style BE fill:#dbeafe,stroke:#2563eb,color:#1c1f30
+    style DB fill:#d1fae5,stroke:#059669,color:#1c1f30
 
 ### Responsabilidades por camada
 
