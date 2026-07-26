@@ -24,6 +24,7 @@ Aplicação local de gerenciamento de tempo e tarefas de estudo, inspirada no Cl
 
 O projeto segue uma arquitetura **cliente–servidor local** com quatro camadas bem definidas:
 
+```mermaid
 flowchart LR
 
     subgraph FE["🌐 Frontend"]
@@ -52,6 +53,7 @@ flowchart LR
     style FE fill:#ede9fe,stroke:#7c6ff7,color:#1c1f30
     style BE fill:#dbeafe,stroke:#2563eb,color:#1c1f30
     style DB fill:#d1fae5,stroke:#059669,color:#1c1f30
+```
 
 ### Responsabilidades por camada
 
