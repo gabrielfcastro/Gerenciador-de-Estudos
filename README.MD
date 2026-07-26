@@ -27,32 +27,38 @@ O projeto segue uma arquitetura **cliente–servidor local** com quatro camadas 
 ```mermaid
 flowchart LR
 
-    subgraph FE["🌐 Frontend"]
-        html["HTML · CSS · JavaScript"]
+    user["👤 Usuário"]
+
+    subgraph FE["Frontend"]
+        front["Interface Web
+HTML · CSS · JavaScript"]
     end
 
-    subgraph BE["⚙️ Backend"]
-        app["app.py
-        API REST"]
-        svc["Serviços
-        Regras de negócio"]
-        repo["Repositórios
-        Acesso aos dados"]
-
-        app --> svc
-        svc --> repo
+    subgraph BE["Backend"]
+        api["API REST"]
+        service["Serviços"]
+        repo["Persistência"]
     end
 
-    subgraph DB["🗄️ Banco de Dados"]
+    subgraph DB["Banco de Dados"]
         sqlite[("SQLite")]
     end
 
-    html -->|"HTTP / JSON"| app
+    user --> front
+    front -->|"HTTP / JSON"| api
+    api --> service
+    service --> repo
     repo --> sqlite
 
-    style FE fill:#ede9fe,stroke:#7c6ff7,color:#1c1f30
-    style BE fill:#dbeafe,stroke:#2563eb,color:#1c1f30
-    style DB fill:#d1fae5,stroke:#059669,color:#1c1f30
+    classDef frontend fill:#F3F0FF,stroke:#7C3AED,stroke-width:2px,color:#111827
+    classDef backend fill:#EFF6FF,stroke:#2563EB,stroke-width:2px,color:#111827
+    classDef database fill:#ECFDF5,stroke:#059669,stroke-width:2px,color:#111827
+    classDef actor fill:#FFFFFF,stroke:#6B7280,stroke-width:2px,color:#111827
+
+    class user actor
+    class front frontend
+    class api,service,repo backend
+    class sqlite database
 ```
 
 ### Responsabilidades por camada
