@@ -2,51 +2,76 @@
 
 Aplicação local de gerenciamento de tempo e tarefas de estudo, inspirada no Clockify. Roda completamente offline, sem necessidade de servidor externo ou conta em nuvem.
 
-> Sou formado em Engenharia da Computação pela UnB e comecei a usar esse projeto em 2025 para me ajudar a estudar e organizar meu tempo. À medida que sentir necessidade, vou adicionando novas funcionalidades — essa é a primeira versão.
+> Sou formado em Engenharia da Computação pela UnB e comecei a usar esse projeto em 2025 para me ajudar a estudar e organizar meu tempo. À medida que sentir necessidade, vou adicionando novas funcionalidades — essa é a quarta versão.
 
 ---
 
 ## ✨ Funcionalidades
 
-- **Timer com pause/retomar** — cronômetro vinculado a uma matéria, com barra de progresso
-- **Bloco de tempo** — alarme sonoro configurável (ex: 1h15m) para controle de sessão
-- **Categorias por matéria** — cada matéria tem nome e cor personalizados
-- **Gráficos por período** — barras (semana, mês, 6 meses, ano) e pizza (hoje, total)
-- **Sessões recentes** — histórico editável com nota, horário de início e fim corrigíveis
-- **Kanban de tarefas** — quadro com colunas "A fazer" e "Concluído", com drag and drop
-- **Filtros de período** — Hoje, Semana, Mês, 6 meses, Ano e Total
+- **Timer** com pause/retomar, alarme de bloco configurável e barra de progresso — borda do card pulsa na cor da matéria enquanto o cronômetro roda
+- **Categorias** com cores únicas por matéria e destaque visual na sidebar
+- **Gráficos interativos** com filtros por período (Hoje, Semana, Mês, 6 meses, Ano, Total) — barras com nomes de dias/meses, pizza para Hoje e Total
+- **Filtro por legenda** — clicar numa matéria no gráfico oculta ela e recalcula as estatísticas em tempo real
+- **Sessões agrupadas por matéria** — expandíveis, sincronizadas com o filtro de período, editáveis e excluíveis
+- **Edição de sessões** — corrige horário de início, fim, categoria e nota de qualquer sessão passada
+- **Kanban de tarefas** com drag and drop e undo de 4 segundos ao concluir
+- **Cronograma semanal** — planejamento fixo por dia da semana vinculado às matérias
+- **Bloco de estudo** — alarme sonoro configurável (ex: 1h15m) para gestão de tempo por bloco
 
 ---
 
 ## 🏗️ Arquitetura
 
-O projeto segue uma arquitetura **cliente–servidor local**:
+O projeto segue uma arquitetura **cliente–servidor local** com quatro camadas bem definidas:
 
 ```mermaid
 flowchart LR
 
-subgraph Frontend
-    Browser["🌐 Navegador"]
-end
+    subgraph FE["🌐  Frontend"]
+        html["index.html
+        HTML · CSS · JavaScript"]
+    end
 
-subgraph Backend
-    App["app.py"]
-    Repo["Repositório"]
-end
+    subgraph BE["⚙️  Backend"]
+        app["app.py
+        Servidor HTTP · Roteador REST"]
+        svc["servicos.py
+        Regras de negócio · Mapeamento"]
+        repo["repositorio.py
+        RepositorioCategorias
+        RepositorioSessoes
+        RepositorioTarefas
+        RepositorioCronograma
+        RepositorioConfiguracoes"]
+        app --> svc --> repo
+    end
 
-subgraph Persistência
-    DB["SQLite"]
-end
+    subgraph DATA["🗄️  Dados"]
+        db["database.py
+        Conexão · Inicialização do schema"]
+        sqlite[("gerenciador_de_estudos.db
+        categories · sessions
+        settings · tasks · schedule")]
+        db --> sqlite
+    end
 
-Browser -->|"HTTP / JSON"| App
-App --> Repo
-Repo --> DB
+    FE -->|"HTTP / JSON"| BE
+    BE --> DATA
 
-style Browser fill:#818cf8,color:#fff
-style App fill:#3b82f6,color:#fff
-style Repo fill:#10b981,color:#fff
-style DB fill:#f59e0b,color:#fff
+    style FE   fill:#ede9fe,stroke:#7c6ff7,color:#1c1f30
+    style BE   fill:#dbeafe,stroke:#2563eb,color:#1c1f30
+    style DATA fill:#d1fae5,stroke:#059669,color:#1c1f30
 ```
+
+### Responsabilidades por camada
+
+| Camada | Arquivo | Responsabilidade |
+|---|---|---|
+| Frontend | `index.html` + `style.css` + `app.js` | Interface, estado local, chamadas HTTP |
+| Roteamento | `app.py` | Recebe requisições, despacha via `Roteador`, serializa JSON |
+| Serviços | `servicos.py` | Regras de negócio, validações, mapeamento PT→EN |
+| Repositórios | `repositorio.py` | Queries SQL parametrizadas, acesso ao banco |
+| Banco | `database.py` | Conexão SQLite, inicialização do schema |
 
 ### Estrutura de arquivos
 
@@ -55,14 +80,22 @@ gerenciador-de-estudos/
 ├── .gitignore
 ├── README.md
 ├── requirements.txt
-└── src/
-    ├── app.py            # Servidor HTTP + roteamento de endpoints
-    ├── database.py       # Conexão com SQLite e inicialização do banco
-    ├── repositorio.py    # Classes de acesso a dados (padrão Repository)
-    └── index.html        # Frontend completo (HTML + CSS + JS)
+├── src/
+│   ├── app.py            # Servidor HTTP + Roteador declarativo (19 rotas)
+│   ├── servicos.py       # Camada de serviço — lógica de negócio
+│   ├── repositorio.py    # Padrão Repository — acesso a dados
+│   ├── database.py       # Conexão SQLite + inicialização do schema
+│   ├── index.html        # Estrutura HTML (sem CSS ou JS embutidos)
+│   ├── style.css         # Estilos
+│   └── app.js            # Lógica de frontend
+└── tests/
+    ├── conftest.py           # Path setup + helpers compartilhados
+    ├── test_repositorios.py  # Testes da camada de dados (banco isolado)
+    ├── test_servicos.py      # Testes unitários de regras de negócio
+    └── test_rotas.py         # Testes de integração HTTP (servidor real)
 ```
 
-### Banco de dados (SQLite)
+### Banco de dados
 
 O arquivo `gerenciador_de_estudos.db` é criado automaticamente na primeira execução dentro de `src/`. Não é versionado (ver `.gitignore`).
 
@@ -70,8 +103,9 @@ O arquivo `gerenciador_de_estudos.db` é criado automaticamente na primeira exec
 |---|---|
 | `categories` | Matérias com nome e cor |
 | `sessions` | Sessões de estudo com início, fim, duração e nota |
-| `settings` | Configurações gerais (ex: duração do bloco) |
-| `tasks` | Tarefas do kanban com título e categoria |
+| `settings` | Configurações gerais (duração do bloco de estudo) |
+| `tasks` | Tarefas do kanban |
+| `schedule` | Entradas do cronograma semanal |
 
 ---
 
@@ -103,12 +137,21 @@ O arquivo `gerenciador_de_estudos.db` é criado automaticamente na primeira exec
 
 > O servidor imprime a URL no terminal quando inicia. Para encerrar, pressione `Ctrl+C`.
 
+### Testes
+
+```bash
+# da raiz do projeto
+pytest tests/ -v
+```
+
 ---
 
 ## 🔌 Endpoints da API
 
 | Método | Rota | Descrição |
 |---|---|---|
+| GET | `/api/settings` | Lê configurações |
+| PUT | `/api/settings` | Salva configurações |
 | GET | `/api/categories` | Lista todas as matérias |
 | POST | `/api/categories` | Cria uma matéria |
 | PUT | `/api/categories/:id` | Edita uma matéria |
@@ -120,11 +163,12 @@ O arquivo `gerenciador_de_estudos.db` é criado automaticamente na primeira exec
 | DELETE | `/api/sessions/:id` | Remove uma sessão |
 | GET | `/api/chart?period=` | Dados agregados para o gráfico |
 | GET | `/api/stats?period=` | Estatísticas resumidas do período |
-| GET | `/api/settings` | Lê configurações |
-| PUT | `/api/settings` | Salva configurações |
 | GET | `/api/tasks` | Lista tarefas pendentes |
 | POST | `/api/tasks` | Cria uma tarefa |
 | DELETE | `/api/tasks/:id` | Remove uma tarefa |
+| GET | `/api/schedule` | Lista entradas do cronograma |
+| POST | `/api/schedule` | Adiciona matéria a um dia |
+| DELETE | `/api/schedule/:id` | Remove entrada do cronograma |
 
 ---
 
@@ -137,5 +181,6 @@ O arquivo `gerenciador_de_estudos.db` é criado automaticamente na primeira exec
 | Frontend | HTML + CSS + JavaScript puro |
 | Gráficos | [Chart.js 4.4](https://www.chartjs.org/) via CDN |
 | Tipografia | [Inter](https://fonts.google.com/specimen/Inter) via Google Fonts |
+| Testes | [pytest](https://pytest.org/) |
 
 Nenhuma dependência externa de Python — tudo que o backend precisa já vem na biblioteca padrão.
