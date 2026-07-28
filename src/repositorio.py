@@ -267,3 +267,29 @@ class RepositorioCronograma:
             conn.execute("DELETE FROM schedule WHERE id=?", (entry_id,))
             conn.commit()
             return {"ok": True}
+
+    @staticmethod
+    def mover(entry_id, novo_dia):
+        """Move uma entrada para outro dia (usado pelo drag-and-drop), colocando-a
+        no fim da lista do dia de destino."""
+        with get_db() as conn:
+            existe = conn.execute("SELECT id FROM schedule WHERE id=?", (entry_id,)).fetchone()
+            if not existe:
+                return None
+
+            max_ordem = conn.execute(
+                "SELECT COALESCE(MAX(ordem), -1) as m FROM schedule WHERE dia_semana=?",
+                (novo_dia,)
+            ).fetchone()["m"]
+
+            conn.execute(
+                "UPDATE schedule SET dia_semana=?, ordem=? WHERE id=?",
+                (novo_dia, max_ordem + 1, entry_id)
+            )
+            conn.commit()
+            row = conn.execute("""
+                SELECT s.*, c.nome as categoria_nome, c.cor as categoria_cor
+                FROM schedule s LEFT JOIN categories c ON s.categoria_id = c.id
+                WHERE s.id=?
+            """, (entry_id,)).fetchone()
+            return dict(row)

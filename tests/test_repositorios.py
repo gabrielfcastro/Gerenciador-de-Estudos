@@ -344,3 +344,32 @@ class TestCronograma:
         e = RepositorioCronograma.listar()[0]
         assert e["categoria_nome"] == "Dir. Admin"
         assert e["categoria_cor"]  == "#7c6ff7"
+
+    def test_mover_altera_dia_semana(self):
+        """Drag-and-drop: mover uma entrada para outro dia."""
+        from repositorio import RepositorioCronograma
+        cat = self._cat()
+        e = RepositorioCronograma.adicionar("segunda", cat["id"])
+        res = RepositorioCronograma.mover(e["id"], "sexta")
+        assert res["dia_semana"] == "sexta"
+        assert res["id"] == e["id"]
+
+    def test_mover_vai_para_o_fim_do_dia_destino(self):
+        from repositorio import RepositorioCronograma
+        cat = self._cat()
+        e1 = RepositorioCronograma.adicionar("terca", cat["id"])
+        e2 = RepositorioCronograma.adicionar("quarta", cat["id"])
+        res = RepositorioCronograma.mover(e2["id"], "terca")
+        assert res["ordem"] > e1["ordem"]
+
+    def test_mover_preserva_nome_e_cor_da_categoria(self):
+        from repositorio import RepositorioCronograma
+        cat = self._cat("Dir. Civil", "#123456")
+        e = RepositorioCronograma.adicionar("segunda", cat["id"])
+        res = RepositorioCronograma.mover(e["id"], "domingo")
+        assert res["categoria_nome"] == "Dir. Civil"
+        assert res["categoria_cor"]  == "#123456"
+
+    def test_mover_entrada_inexistente_retorna_none(self):
+        from repositorio import RepositorioCronograma
+        assert RepositorioCronograma.mover(9999, "segunda") is None

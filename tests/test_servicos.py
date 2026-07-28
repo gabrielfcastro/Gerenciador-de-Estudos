@@ -217,7 +217,64 @@ class TestServicoConfiguracoes:
             assert res == {"block_duration": "3600"}
 
 
+# ── ServicoTarefas ────────────────────────────────────────────────────────────
+
+class TestServicoTarefas:
+
+    def test_criar_sem_categoria_lanca_erro(self):
+        """Regra de negócio: toda tarefa deve estar associada a uma matéria."""
+        from servicos import ServicoTarefas
+        with pytest.raises(ValueError):
+            with patch("servicos.RepositorioTarefas"):
+                ServicoTarefas.criar("Sem matéria", None)
+
+    def test_criar_com_categoria_id_zero_lanca_erro(self):
+        """categoria_id falsy (0, '', None) deve ser rejeitado."""
+        from servicos import ServicoTarefas
+        with pytest.raises(ValueError):
+            with patch("servicos.RepositorioTarefas"):
+                ServicoTarefas.criar("Sem matéria", 0)
+
+    def test_criar_com_categoria_chama_repositorio(self):
+        from servicos import ServicoTarefas
+        with patch("servicos.RepositorioTarefas") as mock_repo:
+            mock_repo.criar.return_value = {"id": 1, "titulo": "X", "categoria_id": 7, "status": "todo"}
+            res = ServicoTarefas.criar("X", 7)
+            mock_repo.criar.assert_called_once_with("X", 7)
+            assert res["categoria_id"] == 7
+
+
 # ── Roteador ─────────────────────────────────────────────────────────────────
+
+class TestServicoCronograma:
+
+    def test_mover_com_dia_valido_chama_repositorio(self):
+        from servicos import ServicoCronograma
+        with patch("servicos.RepositorioCronograma") as mock_repo:
+            mock_repo.DIAS = ['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado', 'domingo']
+            mock_repo.mover.return_value = {
+                "id": 1, "dia_semana": "sexta", "categoria_id": 7,
+                "categoria_nome": "Dir", "categoria_cor": "#7c6ff7"
+            }
+            res = ServicoCronograma.mover(1, "sexta")
+            mock_repo.mover.assert_called_once_with(1, "sexta")
+            assert res["category_name"] == "Dir"
+
+    def test_mover_com_dia_invalido_lanca_erro(self):
+        """Regra de negócio: dia da semana deve ser um dos valores conhecidos."""
+        from servicos import ServicoCronograma
+        with patch("servicos.RepositorioCronograma") as mock_repo:
+            mock_repo.DIAS = ['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado', 'domingo']
+            with pytest.raises(ValueError):
+                ServicoCronograma.mover(1, "quinta-feira")
+
+    def test_mover_entrada_inexistente_retorna_none(self):
+        from servicos import ServicoCronograma
+        with patch("servicos.RepositorioCronograma") as mock_repo:
+            mock_repo.DIAS = ['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado', 'domingo']
+            mock_repo.mover.return_value = None
+            assert ServicoCronograma.mover(9999, "segunda") is None
+
 
 class TestRoteador:
 

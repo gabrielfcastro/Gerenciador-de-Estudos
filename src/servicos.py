@@ -127,6 +127,8 @@ class ServicoTarefas:
 
     @staticmethod
     def criar(titulo: str, categoria_id=None) -> dict:
+        if not categoria_id:
+            raise ValueError("tarefa precisa estar associada a uma matéria")
         return RepositorioTarefas.criar(titulo, categoria_id)
 
     @staticmethod
@@ -158,3 +160,10 @@ class ServicoCronograma:
     @staticmethod
     def remover(entry_id) -> dict:
         return RepositorioCronograma.remover(entry_id)
+
+    @staticmethod
+    def mover(entry_id, dia_semana) -> dict | None:
+        if dia_semana not in RepositorioCronograma.DIAS:
+            raise ValueError("dia da semana inválido")
+        res = RepositorioCronograma.mover(entry_id, dia_semana)
+        return ServicoCronograma._mapear(res) if res else None

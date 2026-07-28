@@ -231,7 +231,11 @@ class TestTarefas:
         assert data == []
 
     def test_post_cria_tarefa(self, porta):
-        status, data = req(porta, "POST", "/api/tasks", {"titulo": "Estudar cap. 1"})
+        _, cat = req(porta, "POST", "/api/categories", {"name": "Direito", "color": "#7c6ff7"})
+        status, data = req(porta, "POST", "/api/tasks", {
+            "titulo": "Estudar cap. 1",
+            "categoria_id": cat["id"]
+        })
         assert status == 201
         assert data["titulo"] == "Estudar cap. 1"
         assert data["status"] == "todo"
@@ -245,8 +249,21 @@ class TestTarefas:
         assert status == 201
         assert data["categoria_id"] == cat["id"]
 
+    def test_post_tarefa_sem_categoria_retorna_422(self, porta):
+        """Regra de negócio: toda tarefa deve estar associada a uma matéria."""
+        status, data = req(porta, "POST", "/api/tasks", {"titulo": "Sem matéria"})
+        assert status == 422
+        assert "error" in data
+
+    def test_post_tarefa_com_categoria_null_retorna_422(self, porta):
+        status, data = req(porta, "POST", "/api/tasks", {
+            "titulo": "Sem matéria", "categoria_id": None
+        })
+        assert status == 422
+
     def test_delete_remove_tarefa(self, porta):
-        _, t = req(porta, "POST", "/api/tasks", {"titulo": "Temp"})
+        _, cat = req(porta, "POST", "/api/categories", {"name": "Temp", "color": "#abc"})
+        _, t = req(porta, "POST", "/api/tasks", {"titulo": "Temp", "categoria_id": cat["id"]})
         status, _ = req(porta, "DELETE", f"/api/tasks/{t['id']}")
         assert status == 200
         _, lista = req(porta, "GET", "/api/tasks")
@@ -305,3 +322,35 @@ class TestCronograma:
         assert status == 200
         _, lista = req(porta, "GET", "/api/schedule")
         assert lista == []
+
+    def test_put_move_entrada_para_outro_dia(self, porta):
+        """Drag-and-drop no planejamento: mover uma matéria de um dia para outro."""
+        cat = self._criar_cat(porta)
+        _, e = req(porta, "POST", "/api/schedule", {
+            "dia_semana": "segunda", "categoria_id": cat["id"]
+        })
+        status, data = req(porta, "PUT", f"/api/schedule/{e['id']}", {
+            "dia_semana": "quinta"
+        })
+        assert status == 200
+        assert data["dia_semana"] == "quinta"
+
+        _, lista = req(porta, "GET", "/api/schedule")
+        assert len(lista) == 1
+        assert lista[0]["dia_semana"] == "quinta"
+
+    def test_put_dia_invalido_retorna_422(self, porta):
+        cat = self._criar_cat(porta)
+        _, e = req(porta, "POST", "/api/schedule", {
+            "dia_semana": "segunda", "categoria_id": cat["id"]
+        })
+        status, data = req(porta, "PUT", f"/api/schedule/{e['id']}", {
+            "dia_semana": "feriado"
+        })
+        assert status == 422
+
+    def test_put_entrada_inexistente_retorna_404(self, porta):
+        status, _ = req(porta, "PUT", "/api/schedule/9999", {
+            "dia_semana": "segunda"
+        })
+        assert status == 404

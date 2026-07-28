@@ -26,6 +26,8 @@ let pendingDeleteId = null;
 let scheduleEntries = [];
 let schedDia      = null;
 let schedCatId    = null;
+let draggedCatId   = null;
+let draggedEntryId = null;
 
 window.addEventListener('DOMContentLoaded', async () => {
   buildSwatches();
@@ -837,10 +839,11 @@ function closeAddTask() {
 async function saveTask() {
   const titulo = document.getElementById('inp-task-title').value.trim();
   if (!titulo) return;
+  if (!taskSelCatId) { alert('Selecione uma matéria para a tarefa!'); return; }
   await fetch(`${API}/tasks`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ titulo, categoria_id: taskSelCatId ? parseInt(taskSelCatId) : null })
+    body: JSON.stringify({ titulo, categoria_id: parseInt(taskSelCatId) })
   });
   closeAddTask();
   await loadTasks();
@@ -862,8 +865,26 @@ const DIAS_CONFIG = [
 async function loadCronograma() {
   try {
     scheduleEntries = await (await fetch(`${API}/schedule`)).json();
+    renderCronogramaCats();
     renderCronograma();
   } catch {}
+}
+
+function renderCronogramaCats() {
+  const el = document.getElementById('cronograma-cats');
+  if (!el) return;
+  if (!categories.length) {
+    el.innerHTML = '<span style="color:var(--text3);font-size:.78rem">Crie uma matéria primeiro</span>';
+    return;
+  }
+  el.innerHTML = categories.map(c => `
+    <div class="cronograma-cat-chip" draggable="true"
+      style="background:${c.color}18;border-color:${c.color}55;color:${c.color}"
+      ondragstart="onCatChipDragStart(event, ${c.id})"
+      ondragend="onCatChipDragEnd(event)">
+      <div class="cronograma-cat-chip-dot" style="background:${c.color}"></div>
+      ${esc(c.name)}
+    </div>`).join('');
 }
 
 function renderCronograma() {
@@ -875,20 +896,98 @@ function renderCronograma() {
           const color = e.category_color || '#8b90a8';
           const name  = e.category_name  || 'Sem nome';
           const bg    = color + '22';
-          return `<div class="dia-pill" style="background:${bg};border-color:${color}55">
+          return `<div class="dia-pill" draggable="true" style="background:${bg};border-color:${color}55"
+            ondragstart="onEntryDragStart(event, ${e.id})"
+            ondragend="onEntryDragEnd(event)">
             <div class="pill-dot" style="background:${color}"></div>
             <span class="pill-nome" style="color:${color}">${esc(name)}</span>
             <button class="pill-del" style="color:${color}" onclick="removeScheduleEntry(${e.id})" title="Remover">✕</button>
           </div>`;
         }).join('')
-      : `<div class="cronograma-empty">Vazio</div>`;
+      : `<div class="cronograma-empty">Arraste uma matéria aqui</div>`;
 
     return `<div class="dia-col">
       <div class="dia-header"><span class="dia-nome">${label}</span></div>
-      <div class="dia-pills">${pillsHtml}</div>
+      <div class="dia-pills" id="dia-pills-${key}"
+        ondragover="onDiaDragOver(event,'${key}')"
+        ondragleave="onDiaDragLeave(event,'${key}')"
+        ondrop="onDiaDrop(event,'${key}')">${pillsHtml}</div>
       <button class="dia-add" onclick="openAddSchedule('${key}','${label}')">＋ Matéria</button>
     </div>`;
   }).join('');
+}
+
+function onCatChipDragStart(event, catId) {
+  draggedCatId   = catId;
+  draggedEntryId = null;
+  setTimeout(() => { if (event.target) event.target.classList.add('dragging'); }, 0);
+  event.dataTransfer.effectAllowed = 'copy';
+}
+function onCatChipDragEnd(event) {
+  event.target.classList.remove('dragging');
+  draggedCatId = null;
+}
+
+function onEntryDragStart(event, entryId) {
+  draggedEntryId = entryId;
+  draggedCatId   = null;
+  setTimeout(() => { if (event.target) event.target.classList.add('dragging'); }, 0);
+  event.dataTransfer.effectAllowed = 'move';
+}
+function onEntryDragEnd(event) {
+  event.target.classList.remove('dragging');
+  draggedEntryId = null;
+}
+
+function onDiaDragOver(event, dia) {
+  event.preventDefault();
+  document.getElementById('dia-pills-' + dia).classList.add('drag-over');
+}
+function onDiaDragLeave(event, dia) {
+  if (!event.currentTarget.contains(event.relatedTarget))
+    document.getElementById('dia-pills-' + dia).classList.remove('drag-over');
+}
+async function onDiaDrop(event, dia) {
+  event.preventDefault();
+  document.getElementById('dia-pills-' + dia).classList.remove('drag-over');
+
+  if (draggedEntryId) {
+    const entryId = draggedEntryId;
+    draggedEntryId = null;
+    await moveScheduleEntry(entryId, dia);
+  } else if (draggedCatId) {
+    const catId = draggedCatId;
+    draggedCatId = null;
+    await addScheduleEntryDirect(dia, catId);
+  }
+}
+
+async function moveScheduleEntry(entryId, novoDia) {
+  const entry = scheduleEntries.find(e => e.id === entryId);
+  if (entry && entry.dia_semana === novoDia) return;
+  const res = await fetch(`${API}/schedule/${entryId}`, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ dia_semana: novoDia })
+  });
+  if (res.ok) {
+    const atualizado = await res.json();
+    scheduleEntries = scheduleEntries.map(e => e.id === entryId ? atualizado : e);
+    renderCronograma();
+  }
+}
+
+async function addScheduleEntryDirect(dia, catId) {
+  const res = await fetch(`${API}/schedule`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ dia_semana: dia, categoria_id: parseInt(catId) })
+  });
+  if (res.ok) {
+    const entry = await res.json();
+    scheduleEntries.push(entry);
+    renderCronograma();
+  }
 }
 
 function openAddSchedule(dia, label) {

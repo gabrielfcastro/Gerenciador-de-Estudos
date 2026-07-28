@@ -156,6 +156,10 @@
 <!-- ── Cronograma ── -->
 <div id="view-cronograma" class="view">
   <div class="cronograma-wrap">
+    <div class="cronograma-cats-wrap">
+      <span class="cronograma-cats-label"> Organização das matérias:</span>
+      <div class="cronograma-cats" id="cronograma-cats"></div>
+    </div>
     <div class="cronograma-grid" id="cronograma-grid">
       <!-- preenchido pelo JS -->
     </div>
@@ -203,7 +207,7 @@
       <input type="text" id="inp-task-title" placeholder="Ex: Capítulo 3 — Contratos" maxlength="100"/>
     </div>
     <div class="form-group">
-      <label>Matéria</label>
+      <label>Matéria <span style="color:var(--red)">*</span></label>
       <div class="csel" id="task-csel">
         <button class="csel-trigger" onclick="toggleCsel('task-csel')">
           <span class="csel-dot" id="task-csel-dot" style="display:none"></span>

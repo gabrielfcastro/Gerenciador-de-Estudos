@@ -109,6 +109,8 @@ def _criar_roteador():
           lambda qs, body: ServicoCronograma.listar())
     r.add("POST",   "/api/schedule",
           lambda qs, body: ServicoCronograma.adicionar(body["dia_semana"], body["categoria_id"]), status=201)
+    r.add("PUT",    "/api/schedule/{id}",
+          lambda qs, body, resource_id: ServicoCronograma.mover(resource_id, body["dia_semana"]))
     r.add("DELETE", "/api/schedule/{id}",
           lambda qs, body, resource_id: ServicoCronograma.remover(resource_id))
 
