@@ -1,24 +1,14 @@
-"""
-Testes dos repositórios do Gerenciador de Estudos.
-Execute com:  pytest tests/ -v
-"""
 import pytest
 from conftest import now_iso, calc_duracao
 
 
 @pytest.fixture(autouse=True)
 def banco_de_teste(tmp_path, monkeypatch):
-    """Banco SQLite isolado por teste — não afeta o banco real."""
     import database
     db_temp = str(tmp_path / "test.db")
     monkeypatch.setattr(database, "db_path", db_temp)
     database.init_db()
     yield db_temp
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# RepositorioConfiguracoes
-# ══════════════════════════════════════════════════════════════════════════════
 
 class TestConfiguracoes:
 
@@ -47,11 +37,6 @@ class TestConfiguracoes:
         RepositorioConfiguracoes.salvar_ou_atualizar({"duracao_do_bloco": "9000"})
         cfg = RepositorioConfiguracoes.obter_todas()
         assert cfg["duracao_do_bloco"] == "9000"
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# RepositorioCategorias
-# ══════════════════════════════════════════════════════════════════════════════
 
 class TestCategorias:
 
@@ -96,11 +81,6 @@ class TestCategorias:
         from repositorio import RepositorioCategorias
         RepositorioCategorias.deletar(9999)  # não deve lançar erro
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-# RepositorioSessoes
-# ══════════════════════════════════════════════════════════════════════════════
-
 class TestSessoes:
 
     def _criar_sessao_completa(self, cat_id=None, nota=""):
@@ -122,19 +102,18 @@ class TestSessoes:
         s = RepositorioSessoes.iniciar(None, inicio, "")
         res = RepositorioSessoes.parar(s["id"], fim, calc_duracao)
         assert res is not None
-        assert res["duracao"] == 5400  # 1h30m em segundos
+        assert res["duracao"] == 5400
         assert res["fim"] is not None
 
     def test_parar_com_duracao_real_excluindo_pausas(self):
-        """Duração enviada pelo frontend (excluindo pausas) deve sobrepor o cálculo de relógio."""
         from repositorio import RepositorioSessoes
         inicio = "2026-01-01T08:00:00+00:00"
-        fim    = "2026-01-01T09:30:00+00:00"  # 1h30m de relógio
+        fim    = "2026-01-01T09:30:00+00:00"
         s = RepositorioSessoes.iniciar(None, inicio, "")
-        duracao_real = 3000  # 50min estudados, 40min de pausa
+        duracao_real = 3000
         res = RepositorioSessoes.parar(s["id"], fim, calc_duracao, duracao_real)
         assert res is not None
-        assert res["duracao"] == 3000  # usa valor do frontend, não fim - inicio
+        assert res["duracao"] == 3000
 
     def test_parar_sessao_inexistente_retorna_none(self):
         from repositorio import RepositorioSessoes
@@ -222,11 +201,6 @@ class TestSessoes:
         assert "period_key" in dados[0]
         assert "total_seconds" in dados[0]
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-# RepositorioTarefas
-# ══════════════════════════════════════════════════════════════════════════════
-
 class TestTarefas:
 
     def test_criar_sem_categoria(self):
@@ -261,7 +235,6 @@ class TestTarefas:
         assert RepositorioTarefas.listar() == []
 
     def test_categoria_deletada_nao_remove_tarefa(self):
-        """Tarefa com categoria deletada fica com categoria_id NULL."""
         from repositorio import RepositorioTarefas, RepositorioCategorias
         cat = RepositorioCategorias.criar("Passageira", "#tmp")
         RepositorioTarefas.criar("Tarefa com categoria", cat["id"])
@@ -269,11 +242,6 @@ class TestTarefas:
         tarefas = RepositorioTarefas.listar()
         assert len(tarefas) == 1
         assert tarefas[0]["categoria_id"] is None
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# RepositorioCronograma
-# ══════════════════════════════════════════════════════════════════════════════
 
 class TestCronograma:
 
@@ -329,7 +297,6 @@ class TestCronograma:
         assert RepositorioCronograma.listar() == []
 
     def test_deletar_categoria_remove_entradas_cascade(self):
-        """ON DELETE CASCADE: deletar categoria remove entradas do cronograma."""
         from repositorio import RepositorioCronograma, RepositorioCategorias
         cat = self._cat("Passageira", "#tmp")
         RepositorioCronograma.adicionar("quinta", cat["id"])
@@ -337,7 +304,6 @@ class TestCronograma:
         assert RepositorioCronograma.listar() == []
 
     def test_nome_e_cor_da_categoria_na_listagem(self):
-        """Listagem já faz JOIN e traz categoria_nome e categoria_cor."""
         from repositorio import RepositorioCronograma
         cat = self._cat("Dir. Admin", "#7c6ff7")
         RepositorioCronograma.adicionar("sabado", cat["id"])
@@ -346,7 +312,6 @@ class TestCronograma:
         assert e["categoria_cor"]  == "#7c6ff7"
 
     def test_mover_altera_dia_semana(self):
-        """Drag-and-drop: mover uma entrada para outro dia."""
         from repositorio import RepositorioCronograma
         cat = self._cat()
         e = RepositorioCronograma.adicionar("segunda", cat["id"])

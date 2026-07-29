@@ -52,7 +52,6 @@ def init_db():
             );
         """)
         conn.commit()
-        print("BD iniciado, path:", db_path)
     finally:
         conn.close()
 

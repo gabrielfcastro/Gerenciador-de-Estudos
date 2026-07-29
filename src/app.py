@@ -51,8 +51,16 @@ _STATIC = {
     "/":           ("index.html", "text/html; charset=utf-8"),
     "/index.html": ("index.html", "text/html; charset=utf-8"),
     "/style.css":  ("style.css",  "text/css; charset=utf-8"),
-    "/app.js":     ("app.js",     "application/javascript; charset=utf-8"),
 }
+
+def _resolver_estatico(url_path):
+    if url_path in _STATIC:
+        return _STATIC[url_path]
+
+    if url_path.startswith("/js/") and url_path.endswith(".js") and ".." not in url_path:
+        return (url_path.lstrip("/"), "application/javascript; charset=utf-8")
+
+    return None
 
 def _criar_roteador():
     r = Roteador()
@@ -142,8 +150,7 @@ class Handler(BaseHTTPRequestHandler):
         n = int(self.headers.get("Content-Length", 0))
         return json.loads(self.rfile.read(n)) if n else {}
 
-    def _serve_static(self, url_path):
-        filename, content_type = _STATIC[url_path]
+    def _serve_static(self, filename, content_type):
         file_path = os.path.join(_app_dir, filename)
         try:
             with open(file_path, "r", encoding="utf-8") as f:
@@ -162,8 +169,9 @@ class Handler(BaseHTTPRequestHandler):
         qs   = parse_qs(p.query)
         body = self._read_body() if method in ("POST", "PUT") else {}
 
-        if path in _STATIC:
-            self._serve_static(path)
+        estatico = _resolver_estatico(path)
+        if estatico:
+            self._serve_static(*estatico)
             return
 
         resultado, status = _roteador.despachar(method, path, qs, body)

@@ -1,0 +1,8 @@
+{
+  "name": "gerenciador-de-estudos",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}

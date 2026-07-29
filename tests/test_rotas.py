@@ -1,16 +1,8 @@
-"""
-Testes de integração das rotas HTTP do Gerenciador de Estudos.
-Sobem um servidor real numa porta aleatória e fazem requisições HTTP.
-Execute com:  pytest tests/ -v
-"""
 import json
 import sqlite3
 import threading
 import http.client
 import pytest
-
-
-# ── helper de requisição ──────────────────────────────────────────────────────
 
 def req(port, method, path, body=None):
     """Dispara uma requisição HTTP e retorna (status_code, dados)."""
@@ -21,15 +13,8 @@ def req(port, method, path, body=None):
     resp = conn.getresponse()
     return resp.status, json.loads(resp.read())
 
-
-# ── fixtures ──────────────────────────────────────────────────────────────────
-
 @pytest.fixture(scope="module")
 def porta(tmp_path_factory):
-    """
-    Sobe o servidor HTTP uma vez para todo o módulo de testes.
-    Usa um banco de dados temporário isolado do banco real.
-    """
     from http.server import HTTPServer
     import database
     import app as app_module
@@ -49,7 +34,6 @@ def porta(tmp_path_factory):
 
 @pytest.fixture(autouse=True)
 def tabelas_limpas(porta):
-    """Limpa os dados antes de cada teste para garantir isolamento."""
     import database
     conn = sqlite3.connect(database.db_path)
     conn.executescript("""
@@ -63,9 +47,6 @@ def tabelas_limpas(porta):
     conn.commit()
     conn.close()
 
-
-# ── /api/settings ─────────────────────────────────────────────────────────────
-
 class TestSettings:
 
     def test_get_retorna_duracao_padrao(self, porta):
@@ -78,9 +59,6 @@ class TestSettings:
         status, data = req(porta, "GET", "/api/settings")
         assert status == 200
         assert data["block_duration"] == "3600"
-
-
-# ── /api/categories ───────────────────────────────────────────────────────────
 
 class TestCategorias:
 
@@ -121,9 +99,6 @@ class TestCategorias:
         _, lista = req(porta, "GET", "/api/categories")
         assert lista == []
 
-
-# ── /api/sessions ─────────────────────────────────────────────────────────────
-
 class TestSessoes:
 
     def _iniciar(self, porta, cat_id=None):
@@ -144,24 +119,21 @@ class TestSessoes:
         assert data["fim"] is None
 
     def test_parar_usa_duracao_do_frontend(self, porta):
-        """Duração deve vir do frontend (excluindo pausas), não de fim - inicio."""
         _, sessao = self._iniciar(porta)
         status, data = self._parar(porta, sessao["id"], duracao=1800)
         assert status == 200
         assert data["duracao"] == 1800
 
     def test_parar_sem_duration_seconds_usa_calculo(self, porta):
-        """Se o frontend não enviar duration_seconds, calcula normalmente."""
         _, sessao = self._iniciar(porta)
         status, data = req(porta, "POST", "/api/sessions/stop", {
             "session_id": sessao["id"]
-            # sem duration_seconds
         })
         assert status == 200
-        assert data["duracao"] >= 0  # calculado pelo servidor
+        assert data["duracao"] >= 0
 
     def test_get_lista_apenas_finalizadas(self, porta):
-        self._iniciar(porta)  # sessão sem fim — não deve aparecer
+        self._iniciar(porta)
         _, s = self._iniciar(porta)
         self._parar(porta, s["id"])
         status, data = req(porta, "GET", "/api/sessions?period=all")
@@ -198,9 +170,6 @@ class TestSessoes:
         _, lista = req(porta, "GET", "/api/sessions?period=all")
         assert lista == []
 
-
-# ── /api/stats ────────────────────────────────────────────────────────────────
-
 class TestStats:
 
     def test_sem_sessoes_retorna_zeros(self, porta):
@@ -219,9 +188,6 @@ class TestStats:
         assert status == 200
         assert data["total_seconds"] == 3600
         assert data["session_count"] == 1
-
-
-# ── /api/tasks ────────────────────────────────────────────────────────────────
 
 class TestTarefas:
 
@@ -250,7 +216,6 @@ class TestTarefas:
         assert data["categoria_id"] == cat["id"]
 
     def test_post_tarefa_sem_categoria_retorna_422(self, porta):
-        """Regra de negócio: toda tarefa deve estar associada a uma matéria."""
         status, data = req(porta, "POST", "/api/tasks", {"titulo": "Sem matéria"})
         assert status == 422
         assert "error" in data
@@ -268,9 +233,6 @@ class TestTarefas:
         assert status == 200
         _, lista = req(porta, "GET", "/api/tasks")
         assert lista == []
-
-
-# ── /api/schedule ─────────────────────────────────────────────────────────────
 
 class TestCronograma:
 
@@ -324,7 +286,6 @@ class TestCronograma:
         assert lista == []
 
     def test_put_move_entrada_para_outro_dia(self, porta):
-        """Drag-and-drop no planejamento: mover uma matéria de um dia para outro."""
         cat = self._criar_cat(porta)
         _, e = req(porta, "POST", "/api/schedule", {
             "dia_semana": "segunda", "categoria_id": cat["id"]

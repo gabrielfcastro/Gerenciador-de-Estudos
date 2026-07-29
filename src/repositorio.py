@@ -270,8 +270,6 @@ class RepositorioCronograma:
 
     @staticmethod
     def mover(entry_id, novo_dia):
-        """Move uma entrada para outro dia (usado pelo drag-and-drop), colocando-a
-        no fim da lista do dia de destino."""
         with get_db() as conn:
             existe = conn.execute("SELECT id FROM schedule WHERE id=?", (entry_id,)).fetchone()
             if not existe:

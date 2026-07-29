@@ -1,13 +1,5 @@
-"""
-Testes unitários da camada de serviço.
-NÃO tocam no banco de dados nem na rede — testam regras de negócio isoladas.
-Execute com:  pytest tests/ -v
-"""
 import pytest
 from unittest.mock import patch, MagicMock
-
-
-# ── calcular_duracao ──────────────────────────────────────────────────────────
 
 class TestCalcularDuracao:
 
@@ -35,9 +27,6 @@ class TestCalcularDuracao:
         d = self._calc("2026-01-01T23:00:00+00:00", "2026-01-02T01:00:00+00:00")
         assert d == 7200
 
-
-# ── ServicoCategorias._mapear ─────────────────────────────────────────────────
-
 class TestServicoCategoriasMapeamento:
 
     def _mapear(self, cat):
@@ -51,9 +40,6 @@ class TestServicoCategoriasMapeamento:
     def test_preserva_id(self):
         res = self._mapear({"id": 42, "nome": "X", "cor": "#000"})
         assert res["id"] == 42
-
-
-# ── ServicoSessoes._mapear ────────────────────────────────────────────────────
 
 class TestServicoSessoesMapeamento:
 
@@ -77,14 +63,11 @@ class TestServicoSessoesMapeamento:
         assert res["category_color"]   == "#7c6ff7"
 
     def test_mapeia_category_id(self):
-        """categoria_id (banco) deve ser exposto como category_id (API).
-        Sem esse mapeamento o frontend agrupa todas as sessões no mesmo grupo."""
         s = {"id": 1, "duracao": 0, "inicio": "", "categoria_nome": "", "categoria_cor": "", "categoria_id": 7}
         res = self._mapear(s)
         assert res["category_id"] == 7
 
     def test_category_id_none_quando_sem_categoria(self):
-        """Sessões sem categoria devem retornar category_id=None explicitamente."""
         s = {"id": 1, "duracao": 0, "inicio": "", "categoria_nome": None, "categoria_cor": None, "categoria_id": None}
         res = self._mapear(s)
         assert "category_id" in res
@@ -99,16 +82,11 @@ class TestServicoSessoesMapeamento:
         assert res["duration_seconds"] is None
         assert res["category_name"]    is None
 
-
-# ── formatarLabels (lógica de exibição do gráfico) ────────────────────────────
-    """Testa a função JS equivalente via lógica Python pura."""
-
     DIAS   = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
     MESES  = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
     def _formatar(self, periods, period):
-        """Reimplementa a lógica de formatarLabels em Python para testar."""
         from datetime import datetime
         if period == 'week':
             return [self.DIAS[datetime.strptime(p, '%Y-%m-%d').weekday() + 1 if datetime.strptime(p, '%Y-%m-%d').weekday() < 6 else 0]
@@ -122,7 +100,6 @@ class TestServicoSessoesMapeamento:
         return periods
 
     def test_semana_vira_dia_da_semana(self):
-        # 2026-07-21 é uma terça-feira
         resultado = self._formatar(['2026-07-21'], 'week')
         assert resultado == ['Ter']
 
@@ -150,8 +127,8 @@ class TestServicoSessoesValidacao:
             with patch("servicos.RepositorioSessoes"):
                 ServicoSessoes.atualizar(
                     1, None,
-                    "2026-01-01T10:00:00+00:00",   # inicio
-                    "2026-01-01T08:00:00+00:00",   # fim ANTES do início
+                    "2026-01-01T10:00:00+00:00",
+                    "2026-01-01T08:00:00+00:00",
                     ""
                 )
 
@@ -185,9 +162,6 @@ class TestServicoSessoesValidacao:
             assert res is not None
             assert res["duration_seconds"] == 3600
 
-
-# ── ServicoConfiguracoes ──────────────────────────────────────────────────────
-
 class TestServicoConfiguracoes:
 
     def test_obter_usa_chave_correta(self):
@@ -216,20 +190,15 @@ class TestServicoConfiguracoes:
             res = ServicoConfiguracoes.salvar(3600)
             assert res == {"block_duration": "3600"}
 
-
-# ── ServicoTarefas ────────────────────────────────────────────────────────────
-
 class TestServicoTarefas:
 
     def test_criar_sem_categoria_lanca_erro(self):
-        """Regra de negócio: toda tarefa deve estar associada a uma matéria."""
         from servicos import ServicoTarefas
         with pytest.raises(ValueError):
             with patch("servicos.RepositorioTarefas"):
                 ServicoTarefas.criar("Sem matéria", None)
 
     def test_criar_com_categoria_id_zero_lanca_erro(self):
-        """categoria_id falsy (0, '', None) deve ser rejeitado."""
         from servicos import ServicoTarefas
         with pytest.raises(ValueError):
             with patch("servicos.RepositorioTarefas"):
@@ -242,9 +211,6 @@ class TestServicoTarefas:
             res = ServicoTarefas.criar("X", 7)
             mock_repo.criar.assert_called_once_with("X", 7)
             assert res["categoria_id"] == 7
-
-
-# ── Roteador ─────────────────────────────────────────────────────────────────
 
 class TestServicoCronograma:
 
@@ -261,7 +227,6 @@ class TestServicoCronograma:
             assert res["category_name"] == "Dir"
 
     def test_mover_com_dia_invalido_lanca_erro(self):
-        """Regra de negócio: dia da semana deve ser um dos valores conhecidos."""
         from servicos import ServicoCronograma
         with patch("servicos.RepositorioCronograma") as mock_repo:
             mock_repo.DIAS = ['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado', 'domingo']
@@ -304,13 +269,12 @@ class TestRoteador:
     def test_key_error_retorna_400(self):
         r = self._roteador()
         r.add("POST", "/api/test", lambda qs, body: body["campo_obrigatorio"])
-        res, status = r.despachar("POST", "/api/test", {}, {})  # body vazio
+        res, status = r.despachar("POST", "/api/test", {}, {})
         assert status == 400
 
     def test_value_error_retorna_422(self):
         r = self._roteador()
         r.add("POST", "/api/test", lambda qs, body: (_ for _ in ()).throw(ValueError("inválido")))
-        # usando uma abordagem diferente para lançar ValueError
         def handler_com_erro(qs, body):
             raise ValueError("fim antes do início")
         r.add("PUT", "/api/test", handler_com_erro)

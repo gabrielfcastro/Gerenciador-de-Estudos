@@ -1,11 +1,7 @@
 import sys
 import os
 
-# Garante que src/ seja encontrado ao rodar pytest da raiz do projeto
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-
-# ── helpers compartilhados pelos testes ───────────────────────────────────────
 
 def now_iso():
     from datetime import datetime, timezone

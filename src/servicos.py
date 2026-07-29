@@ -8,7 +8,6 @@ from repositorio import (
 )
 
 def calcular_duracao(inicio_iso: str, fim_iso: str) -> int:
-    """Retorna a duração em segundos entre dois timestamps ISO 8601."""
     t1 = datetime.fromisoformat(inicio_iso.replace("Z", "+00:00"))
     t2 = datetime.fromisoformat(fim_iso.replace("Z", "+00:00"))
     return int((t2 - t1).total_seconds())
@@ -109,9 +108,6 @@ class ServicoSessoes:
     def deletar(sessao_id) -> dict:
         return RepositorioSessoes.deletar(sessao_id)
 
-
-# ── tarefas ───────────────────────────────────────────────────────────────────
-
 class ServicoTarefas:
 
     @staticmethod
@@ -134,9 +130,6 @@ class ServicoTarefas:
     @staticmethod
     def deletar(tid) -> dict:
         return RepositorioTarefas.deletar(tid)
-
-
-# ── cronograma ────────────────────────────────────────────────────────────────
 
 class ServicoCronograma:
 
