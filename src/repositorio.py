@@ -212,14 +212,36 @@ class RepositorioTarefas:
             return converter_linhas_para_lista(rows)
 
     @staticmethod
-    def criar(titulo, categoria_id):
+    def criar(titulo, categoria_id, nota=""):
         with get_db() as conn:
             cur = conn.execute(
-                "INSERT INTO tasks (titulo, categoria_id) VALUES (?,?)",
-                (titulo, categoria_id)
+                "INSERT INTO tasks (titulo, categoria_id, nota) VALUES (?,?,?)",
+                (titulo, categoria_id, nota)
             )
             conn.commit()
-            row = conn.execute("SELECT * FROM tasks WHERE id=?", (cur.lastrowid,)).fetchone()
+            row = conn.execute("""
+                SELECT t.*, c.nome as categoria_nome, c.cor as categoria_cor
+                FROM tasks t LEFT JOIN categories c ON t.categoria_id = c.id
+                WHERE t.id=?
+            """, (cur.lastrowid,)).fetchone()
+            return dict(row)
+
+    @staticmethod
+    def atualizar(tid, titulo, categoria_id, nota):
+        with get_db() as conn:
+            existe = conn.execute("SELECT id FROM tasks WHERE id=?", (tid,)).fetchone()
+            if not existe:
+                return None
+            conn.execute(
+                "UPDATE tasks SET titulo=?, categoria_id=?, nota=? WHERE id=?",
+                (titulo, categoria_id, nota, tid)
+            )
+            conn.commit()
+            row = conn.execute("""
+                SELECT t.*, c.nome as categoria_nome, c.cor as categoria_cor
+                FROM tasks t LEFT JOIN categories c ON t.categoria_id = c.id
+                WHERE t.id=?
+            """, (tid,)).fetchone()
             return dict(row)
 
     @staticmethod

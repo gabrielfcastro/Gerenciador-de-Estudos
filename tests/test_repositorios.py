@@ -243,6 +243,60 @@ class TestTarefas:
         assert len(tarefas) == 1
         assert tarefas[0]["categoria_id"] is None
 
+    # ── novos: nota + edição ──
+
+    def test_criar_com_nota(self):
+        from repositorio import RepositorioTarefas, RepositorioCategorias
+        cat = RepositorioCategorias.criar("Dir", "#7c6ff7")
+        t = RepositorioTarefas.criar("Ler capítulo 3", cat["id"], "Focar nos artigos 5 a 12")
+        assert t["nota"] == "Focar nos artigos 5 a 12"
+
+    def test_criar_sem_nota_usa_string_vazia(self):
+        from repositorio import RepositorioTarefas, RepositorioCategorias
+        cat = RepositorioCategorias.criar("Dir", "#7c6ff7")
+        t = RepositorioTarefas.criar("Ler capítulo 3", cat["id"])
+        assert t["nota"] == ""
+
+    def test_criar_traz_nome_e_cor_da_categoria(self):
+        from repositorio import RepositorioTarefas, RepositorioCategorias
+        cat = RepositorioCategorias.criar("Dir. Penal", "#123456")
+        t = RepositorioTarefas.criar("Fazer resumo", cat["id"])
+        assert t["categoria_nome"] == "Dir. Penal"
+        assert t["categoria_cor"]  == "#123456"
+
+    def test_listar_traz_a_nota(self):
+        from repositorio import RepositorioTarefas
+        RepositorioTarefas.criar("Com nota", None, "Detalhe importante")
+        tarefas = RepositorioTarefas.listar()
+        assert tarefas[0]["nota"] == "Detalhe importante"
+
+    def test_atualizar_titulo_categoria_e_nota(self):
+        from repositorio import RepositorioTarefas, RepositorioCategorias
+        cat1 = RepositorioCategorias.criar("Original", "#111")
+        cat2 = RepositorioCategorias.criar("Nova", "#222")
+        t = RepositorioTarefas.criar("Título original", cat1["id"], "nota original")
+
+        res = RepositorioTarefas.atualizar(t["id"], "Título editado", cat2["id"], "nota editada")
+
+        assert res["titulo"] == "Título editado"
+        assert res["categoria_id"] == cat2["id"]
+        assert res["nota"] == "nota editada"
+        assert res["categoria_nome"] == "Nova"
+        assert res["categoria_cor"]  == "#222"
+
+    def test_atualizar_persiste_no_banco(self):
+        from repositorio import RepositorioTarefas
+        t = RepositorioTarefas.criar("Antigo", None, "antiga")
+        RepositorioTarefas.atualizar(t["id"], "Novo", None, "nova")
+        tarefas = RepositorioTarefas.listar()
+        assert tarefas[0]["titulo"] == "Novo"
+        assert tarefas[0]["nota"]   == "nova"
+
+    def test_atualizar_inexistente_retorna_none(self):
+        from repositorio import RepositorioTarefas
+        res = RepositorioTarefas.atualizar(9999, "X", None, "")
+        assert res is None
+
 class TestCronograma:
 
     def _cat(self, nome="Matéria", cor="#7c6ff7"):

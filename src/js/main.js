@@ -1,38 +1,26 @@
-// ── Ponto de entrada da aplicação ─────────────────────────────────────────────
-// Este é o único arquivo que "conhece" todos os módulos. Cada módulo (timer,
-// categories, sessions, tasks, cronograma) só conhece o que precisa para
-// funcionar sozinho — quem os conecta é este arquivo.
-//
-// Nota sobre window.*: o HTML usa atributos onclick/ondragstart inline
-// (ex.: onclick="startTimer()"). Com ES modules essas funções não ficam
-// automaticamente acessíveis global, então expomos aqui, de forma explícita,
-// só o que o HTML realmente chama. É uma ponte pro HTML existente — o estado
-// em si (as variáveis let que existiam soltas antes) continua todo
-// encapsulado dentro de cada módulo.
-
-import { initCselGlobalClose, toggleCsel, pickCsel } from './csel.js';
+import { initCselGlobalClose, toggleCsel, pickCsel } from '../../gerenciador-de-estudos-atualizado/src/js/csel.js';
 import {
   loadCategories, openCatModal, closeCatModal, saveCategory, deleteCat,
   pickColor, initCategoryModals,
-} from './categories.js';
+} from '../../gerenciador-de-estudos-atualizado/src/js/categories.js';
 import {
   loadSettings, openSettings, closeSettings, saveSettings,
   startTimer, togglePause, askStop, closeConfirm, confirmStop, dismissAlarm,
   initTimerModals,
-} from './timer.js';
+} from '../../gerenciador-de-estudos-atualizado/src/js/timer.js';
 import {
   loadChart, loadStats, loadSessions, setPeriod, toggleGroup, deleteSess,
   openEditSess, closeEditSess, saveEditSess, initSessionModals,
-} from './sessions.js';
+} from '../../gerenciador-de-estudos-atualizado/src/js/sessions.js';
 import {
   loadTasks, onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop,
-  undoComplete, deleteTask, openAddTask, closeAddTask, saveTask, initTaskModals,
+  undoComplete, deleteTask, openAddTask, openEditTask, closeAddTask, saveTask, initTaskModals,
 } from './tasks.js';
 import {
   loadCronograma, openAddSchedule, closeAddSchedule, saveScheduleEntry, removeScheduleEntry,
   onCatChipDragStart, onCatChipDragEnd, onEntryDragStart, onEntryDragEnd,
   onDiaDragOver, onDiaDragLeave, onDiaDrop, initCronogramaModals,
-} from './cronograma.js';
+} from '../../gerenciador-de-estudos-atualizado/src/js/cronograma.js';
 
 const API = 'http://localhost:8000/api';
 
@@ -79,7 +67,7 @@ Object.assign(window, {
   startTimer, togglePause, askStop, closeConfirm, confirmStop, dismissAlarm,
   setPeriod, toggleGroup, deleteSess, openEditSess, closeEditSess, saveEditSess,
   onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop,
-  undoComplete, deleteTask, openAddTask, closeAddTask, saveTask,
+  undoComplete, deleteTask, openAddTask, openEditTask, closeAddTask, saveTask,
   openAddSchedule, closeAddSchedule, saveScheduleEntry, removeScheduleEntry,
   onCatChipDragStart, onCatChipDragEnd, onEntryDragStart, onEntryDragEnd,
   onDiaDragOver, onDiaDragLeave, onDiaDrop,

@@ -43,7 +43,12 @@ export const Api = {
 
   // ── tarefas ──
   getTasks:     () => request('/tasks').then(r => r.json()),
-  createTask:   (titulo, categoriaId) => request('/tasks', { method: 'POST', ...withJson({ titulo, categoria_id: categoriaId }) }),
+  createTask:   (titulo, categoriaId, nota = '') => request('/tasks', {
+    method: 'POST', ...withJson({ titulo, categoria_id: categoriaId, nota }),
+  }),
+  updateTask:   (id, titulo, categoriaId, nota = '') => request(`/tasks/${id}`, {
+    method: 'PUT', ...withJson({ titulo, categoria_id: categoriaId, nota }),
+  }),
   deleteTask:   (id) => request(`/tasks/${id}`, { method: 'DELETE' }),
 
   // ── cronograma ──

@@ -207,10 +207,54 @@ class TestServicoTarefas:
     def test_criar_com_categoria_chama_repositorio(self):
         from servicos import ServicoTarefas
         with patch("servicos.RepositorioTarefas") as mock_repo:
-            mock_repo.criar.return_value = {"id": 1, "titulo": "X", "categoria_id": 7, "status": "todo"}
+            mock_repo.criar.return_value = {"id": 1, "titulo": "X", "categoria_id": 7, "status": "todo", "nota": ""}
             res = ServicoTarefas.criar("X", 7)
-            mock_repo.criar.assert_called_once_with("X", 7)
+            mock_repo.criar.assert_called_once_with("X", 7, "")
             assert res["categoria_id"] == 7
+
+    def test_criar_repassa_a_nota_pro_repositorio(self):
+        from servicos import ServicoTarefas
+        with patch("servicos.RepositorioTarefas") as mock_repo:
+            mock_repo.criar.return_value = {"id": 1, "titulo": "X", "categoria_id": 7, "status": "todo", "nota": "detalhes"}
+            res = ServicoTarefas.criar("X", 7, "detalhes")
+            mock_repo.criar.assert_called_once_with("X", 7, "detalhes")
+            assert res["note"] == "detalhes"
+
+    def test_criar_mapeia_campos_category_para_ingles(self):
+        from servicos import ServicoTarefas
+        with patch("servicos.RepositorioTarefas") as mock_repo:
+            mock_repo.criar.return_value = {
+                "id": 1, "titulo": "X", "categoria_id": 7, "status": "todo",
+                "nota": "", "categoria_nome": "Dir", "categoria_cor": "#7c6ff7",
+            }
+            res = ServicoTarefas.criar("X", 7)
+            assert res["category_name"]  == "Dir"
+            assert res["category_color"] == "#7c6ff7"
+
+    def test_atualizar_sem_categoria_lanca_erro(self):
+        from servicos import ServicoTarefas
+        with pytest.raises(ValueError):
+            with patch("servicos.RepositorioTarefas"):
+                ServicoTarefas.atualizar(1, "Título", None, "")
+
+    def test_atualizar_chama_repositorio_com_os_dados_certos(self):
+        from servicos import ServicoTarefas
+        with patch("servicos.RepositorioTarefas") as mock_repo:
+            mock_repo.atualizar.return_value = {
+                "id": 1, "titulo": "Editado", "categoria_id": 9,
+                "nota": "nova nota", "categoria_nome": "Dir", "categoria_cor": "#111",
+            }
+            res = ServicoTarefas.atualizar(1, "Editado", 9, "nova nota")
+            mock_repo.atualizar.assert_called_once_with(1, "Editado", 9, "nova nota")
+            assert res["titulo"] == "Editado"
+            assert res["note"]   == "nova nota"
+
+    def test_atualizar_tarefa_inexistente_retorna_none(self):
+        from servicos import ServicoTarefas
+        with patch("servicos.RepositorioTarefas") as mock_repo:
+            mock_repo.atualizar.return_value = None
+            res = ServicoTarefas.atualizar(9999, "X", 1, "")
+            assert res is None
 
 class TestServicoCronograma:
 

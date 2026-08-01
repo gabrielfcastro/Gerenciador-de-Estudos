@@ -1,15 +1,16 @@
 // ── Módulo de tarefas (kanban) ────────────────────────────────────────────────
 
 import { Api } from './api.js';
-import { esc } from './utils.js';
-import { buildCsel, registerCsel, resetCsel } from './csel.js';
-import { getCategories } from './categories.js';
+import { esc } from '../../gerenciador-de-estudos-atualizado/src/js/utils.js';
+import { buildCsel, registerCsel, resetCsel } from '../../gerenciador-de-estudos-atualizado/src/js/csel.js';
+import { getCategories } from '../../gerenciador-de-estudos-atualizado/src/js/categories.js';
 
 let tasks           = [];
 let draggedId       = null;
 let undoTimer       = null;
 let pendingDeleteId = null;
 let taskSelCatId    = null;
+let editTaskId      = null;
 
 registerCsel('task-csel', {
   onSelect: (id) => { taskSelCatId = id; },
@@ -43,14 +44,20 @@ function renderTasks() {
            <div class="kanban-card-cat-dot" style="background:${cat.color}"></div>
            ${esc(cat.name)}
          </div>` : '';
+    const nota = t.nota || t.note || '';
+    const notaHtml = nota ? `<div class="kanban-card-note"> ${esc(nota)}</div>` : '';
     return `<div class="kanban-card" draggable="true" data-id="${t.id}"
       ondragstart="onDragStart(event,${t.id})"
       ondragend="onDragEnd(event)">
       <div class="kanban-card-top">
         <div class="kanban-card-title">${esc(t.titulo)}</div>
-        <button class="kanban-card-del" onclick="deleteTask(${t.id})" title="Remover">✕</button>
+        <div class="kanban-card-acts">
+          <button class="kanban-card-edit" onclick="openEditTask(${t.id})" title="Editar">✏</button>
+          <button class="kanban-card-del" onclick="deleteTask(${t.id})" title="Remover">✕</button>
+        </div>
       </div>
       ${catHtml}
+      ${notaHtml}
     </div>`;
   }).join('');
 }
@@ -124,23 +131,62 @@ export async function deleteTask(id) {
 }
 
 export function openAddTask() {
+  editTaskId   = null;
   taskSelCatId = null;
+  document.getElementById('task-modal-title').textContent = 'Nova tarefa';
   document.getElementById('inp-task-title').value = '';
+  document.getElementById('inp-task-note').value  = '';
   buildCsel('task-csel', getCategories(), null);
   resetCsel('task-csel');
   document.getElementById('add-task-modal').classList.add('open');
   setTimeout(() => document.getElementById('inp-task-title').focus(), 50);
 }
 
+export function openEditTask(id) {
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
+
+  editTaskId   = id;
+  taskSelCatId = task.categoria_id || null;
+
+  document.getElementById('task-modal-title').textContent = 'Editar tarefa';
+  document.getElementById('inp-task-title').value = task.titulo;
+  document.getElementById('inp-task-note').value  = task.nota || task.note || '';
+
+  buildCsel('task-csel', getCategories(), taskSelCatId);
+
+  const cat  = taskSelCatId ? getCategories().find(c => String(c.id) === String(taskSelCatId)) : null;
+  const dot  = document.getElementById('task-csel-dot');
+  const text = document.getElementById('task-csel-text');
+  if (cat) {
+    dot.style.display    = 'inline-block';
+    dot.style.background = cat.color;
+    text.textContent     = cat.name;
+    text.classList.remove('placeholder');
+  } else {
+    resetCsel('task-csel');
+  }
+
+  document.getElementById('add-task-modal').classList.add('open');
+  setTimeout(() => document.getElementById('inp-task-title').focus(), 50);
+}
+
 export function closeAddTask() {
   document.getElementById('add-task-modal').classList.remove('open');
+  editTaskId = null;
 }
 
 export async function saveTask() {
   const titulo = document.getElementById('inp-task-title').value.trim();
+  const nota   = document.getElementById('inp-task-note').value.trim();
   if (!titulo) return;
   if (!taskSelCatId) { alert('Selecione uma matéria para a tarefa!'); return; }
-  await Api.createTask(titulo, parseInt(taskSelCatId));
+
+  if (editTaskId) {
+    await Api.updateTask(editTaskId, titulo, parseInt(taskSelCatId), nota);
+  } else {
+    await Api.createTask(titulo, parseInt(taskSelCatId), nota);
+  }
   closeAddTask();
   await loadTasks();
 }

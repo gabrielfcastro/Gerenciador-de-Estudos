@@ -41,6 +41,7 @@ def init_db():
                 titulo       TEXT    NOT NULL,
                 categoria_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
                 status       TEXT    NOT NULL DEFAULT 'todo',
+                nota         TEXT    DEFAULT '',
                 criada_em    TEXT    DEFAULT (datetime('now'))
             );
 
@@ -52,6 +53,12 @@ def init_db():
             );
         """)
         conn.commit()
+
+        # migração: bancos criados antes da coluna `nota` existir em tasks
+        colunas = [r["name"] for r in conn.execute("PRAGMA table_info(tasks)").fetchall()]
+        if "nota" not in colunas:
+            conn.execute("ALTER TABLE tasks ADD COLUMN nota TEXT DEFAULT ''")
+            conn.commit()
     finally:
         conn.close()
 

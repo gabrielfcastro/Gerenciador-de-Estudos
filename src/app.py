@@ -109,7 +109,11 @@ def _criar_roteador():
     r.add("GET",    "/api/tasks",
           lambda qs, body: ServicoTarefas.listar())
     r.add("POST",   "/api/tasks",
-          lambda qs, body: ServicoTarefas.criar(body["titulo"], body.get("categoria_id")), status=201)
+          lambda qs, body: ServicoTarefas.criar(
+              body["titulo"], body.get("categoria_id"), body.get("nota", "")), status=201)
+    r.add("PUT",    "/api/tasks/{id}",
+          lambda qs, body, resource_id: ServicoTarefas.atualizar(
+              resource_id, body["titulo"], body.get("categoria_id"), body.get("nota", "")))
     r.add("DELETE", "/api/tasks/{id}",
           lambda qs, body, resource_id: ServicoTarefas.deletar(resource_id))
 

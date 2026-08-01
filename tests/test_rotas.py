@@ -234,6 +234,63 @@ class TestTarefas:
         _, lista = req(porta, "GET", "/api/tasks")
         assert lista == []
 
+    # ── novos: nota + PUT (edição) ──
+
+    def test_post_tarefa_com_nota(self, porta):
+        _, cat = req(porta, "POST", "/api/categories", {"name": "Dir", "color": "#7c6ff7"})
+        status, data = req(porta, "POST", "/api/tasks", {
+            "titulo": "Ler artigo 121",
+            "categoria_id": cat["id"],
+            "nota": "Focar na parte especial"
+        })
+        assert status == 201
+        assert data["nota"] == "Focar na parte especial"
+
+    def test_get_lista_traz_a_nota(self, porta):
+        _, cat = req(porta, "POST", "/api/categories", {"name": "Dir", "color": "#7c6ff7"})
+        req(porta, "POST", "/api/tasks", {
+            "titulo": "Com nota", "categoria_id": cat["id"], "nota": "detalhe"
+        })
+        status, data = req(porta, "GET", "/api/tasks")
+        assert status == 200
+        assert data[0]["nota"] == "detalhe"
+
+    def test_put_edita_titulo_categoria_e_nota(self, porta):
+        _, cat1 = req(porta, "POST", "/api/categories", {"name": "Original", "color": "#111"})
+        _, cat2 = req(porta, "POST", "/api/categories", {"name": "Nova", "color": "#222"})
+        _, t = req(porta, "POST", "/api/tasks", {
+            "titulo": "Título velho", "categoria_id": cat1["id"], "nota": "nota velha"
+        })
+
+        status, data = req(porta, "PUT", f"/api/tasks/{t['id']}", {
+            "titulo": "Título novo",
+            "categoria_id": cat2["id"],
+            "nota": "nota nova",
+        })
+
+        assert status == 200
+        assert data["titulo"] == "Título novo"
+        assert data["categoria_id"] == cat2["id"]
+        assert data["nota"] == "nota nova"
+
+        _, lista = req(porta, "GET", "/api/tasks")
+        assert lista[0]["titulo"] == "Título novo"
+
+    def test_put_tarefa_sem_categoria_retorna_422(self, porta):
+        _, cat = req(porta, "POST", "/api/categories", {"name": "Dir", "color": "#7c6ff7"})
+        _, t = req(porta, "POST", "/api/tasks", {"titulo": "X", "categoria_id": cat["id"]})
+        status, data = req(porta, "PUT", f"/api/tasks/{t['id']}", {
+            "titulo": "X", "categoria_id": None
+        })
+        assert status == 422
+
+    def test_put_tarefa_inexistente_retorna_404(self, porta):
+        _, cat = req(porta, "POST", "/api/categories", {"name": "Dir", "color": "#7c6ff7"})
+        status, data = req(porta, "PUT", "/api/tasks/9999", {
+            "titulo": "X", "categoria_id": cat["id"]
+        })
+        assert status == 404
+
 class TestCronograma:
 
     def _criar_cat(self, porta):

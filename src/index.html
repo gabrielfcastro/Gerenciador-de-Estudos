@@ -119,9 +119,8 @@
 
   </main>
 </div>
-</div><!-- /view-timer -->
+</div>
 
-<!-- ── Kanban ── -->
 <div id="view-kanban" class="view">
   <div class="kanban-wrap">
     <div class="kanban-col todo-col">
@@ -153,7 +152,6 @@
   </div>
 </div>
 
-<!-- ── Cronograma ── -->
 <div id="view-cronograma" class="view">
   <div class="cronograma-wrap">
     <div class="cronograma-cats-wrap">
@@ -161,12 +159,10 @@
       <div class="cronograma-cats" id="cronograma-cats"></div>
     </div>
     <div class="cronograma-grid" id="cronograma-grid">
-      <!-- preenchido pelo JS -->
     </div>
   </div>
 </div>
 
-<!-- undo banner -->
 <div class="undo-banner" id="undo-banner">
   <span id="undo-text">Tarefa concluída</span>
   <button class="undo-btn" onclick="undoComplete()">Desfazer</button>
@@ -201,7 +197,7 @@
 
 <div class="overlay" id="add-task-modal">
   <div class="modal">
-    <h3>Nova tarefa</h3>
+    <h3 id="task-modal-title">Nova tarefa</h3>
     <div class="form-group">
       <label>Título</label>
       <input type="text" id="inp-task-title" placeholder="Ex: Capítulo 3 — Contratos" maxlength="100"/>
@@ -217,9 +213,13 @@
         <div class="csel-menu" id="task-csel-menu"></div>
       </div>
     </div>
+    <div class="form-group">
+      <label>Nota (opcional)</label>
+      <textarea id="inp-task-note" rows="3" placeholder="Descrição" maxlength="500"></textarea>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeAddTask()">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveTask()">Criar tarefa</button>
+      <button class="btn btn-primary" onclick="saveTask()">Salvar</button>
     </div>
   </div>
 </div>

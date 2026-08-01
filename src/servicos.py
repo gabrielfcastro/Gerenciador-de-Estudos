@@ -115,6 +115,7 @@ class ServicoTarefas:
         t["category_name"]  = t.get("categoria_nome")
         t["category_color"] = t.get("categoria_cor")
         t["category_id"]    = t.get("categoria_id")
+        t["note"]           = t.get("nota", "")
         return t
 
     @staticmethod
@@ -122,10 +123,17 @@ class ServicoTarefas:
         return [ServicoTarefas._mapear(t) for t in RepositorioTarefas.listar()]
 
     @staticmethod
-    def criar(titulo: str, categoria_id=None) -> dict:
+    def criar(titulo: str, categoria_id=None, nota: str = "") -> dict:
         if not categoria_id:
             raise ValueError("tarefa precisa estar associada a uma matéria")
-        return RepositorioTarefas.criar(titulo, categoria_id)
+        return ServicoTarefas._mapear(RepositorioTarefas.criar(titulo, categoria_id, nota))
+
+    @staticmethod
+    def atualizar(tid, titulo: str, categoria_id=None, nota: str = "") -> dict | None:
+        if not categoria_id:
+            raise ValueError("tarefa precisa estar associada a uma matéria")
+        res = RepositorioTarefas.atualizar(tid, titulo, categoria_id, nota)
+        return ServicoTarefas._mapear(res) if res else None
 
     @staticmethod
     def deletar(tid) -> dict:

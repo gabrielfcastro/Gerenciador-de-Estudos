@@ -430,10 +430,20 @@ header{
 .kanban-card.dragging{opacity:.3;transform:scale(.97)}
 .kanban-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
 .kanban-card-title{font-size:.87rem;font-weight:600;color:var(--text);line-height:1.4;flex:1}
-.kanban-card-del{background:none;border:none;color:var(--text3);cursor:pointer;font-size:.78rem;padding:0;transition:color .15s;flex-shrink:0;line-height:1}
-.kanban-card-del:hover{color:var(--red)}
+.kanban-card-acts{display:flex;gap:2px;flex-shrink:0}
+.kanban-card-edit{background:none;border:none;color:var(--text3);cursor:pointer;font-size:.78rem;padding:2px 4px;border-radius:6px;transition:all .15s;line-height:1}
+.kanban-card-edit:hover{color:var(--accent);background:rgba(124,111,247,.1)}
+.kanban-card-del{background:none;border:none;color:var(--text3);cursor:pointer;font-size:.78rem;padding:2px 4px;border-radius:6px;transition:all .15s;line-height:1}
+.kanban-card-del:hover{color:var(--red);background:rgba(248,113,113,.1)}
 .kanban-card-cat{display:inline-flex;align-items:center;gap:5px;font-size:.72rem;font-weight:500;color:var(--text2);margin-top:6px}
 .kanban-card-cat-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.kanban-card-note{font-size:.75rem;color:var(--text2);margin-top:7px;line-height:1.45;white-space:pre-wrap;word-break:break-word}
+.form-group textarea{
+  background:var(--surface2);border:1px solid var(--border2);color:var(--text);
+  padding:10px 12px;border-radius:var(--r-sm);font-size:.88rem;font-family:inherit;
+  outline:none;transition:border .15s,box-shadow .15s;resize:none;line-height:1.5;
+}
+.form-group textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,111,247,.15)}
 .kanban-add-wrap{padding:8px 10px 12px}
 .kanban-add{display:flex;align-items:center;gap:7px;padding:9px 12px;background:none;border:1px dashed var(--border2);border-radius:var(--r-sm);color:var(--text2);cursor:pointer;font-size:.83rem;font-weight:500;font-family:inherit;width:100%;transition:all .18s}
 .kanban-add:hover{border-color:var(--accent);color:var(--accent);background:rgba(124,111,247,.04)}
