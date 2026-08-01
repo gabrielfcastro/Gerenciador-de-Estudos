@@ -1,9 +1,9 @@
 // ── Módulo de tarefas (kanban) ────────────────────────────────────────────────
 
 import { Api } from './api.js';
-import { esc } from '../../gerenciador-de-estudos-atualizado/src/js/utils.js';
-import { buildCsel, registerCsel, resetCsel } from '../../gerenciador-de-estudos-atualizado/src/js/csel.js';
-import { getCategories } from '../../gerenciador-de-estudos-atualizado/src/js/categories.js';
+import { esc } from './utils.js';
+import { buildCsel, registerCsel, resetCsel } from './csel.js';
+import { getCategories } from './categories.js';
 
 let tasks           = [];
 let draggedId       = null;
@@ -45,7 +45,7 @@ function renderTasks() {
            ${esc(cat.name)}
          </div>` : '';
     const nota = t.nota || t.note || '';
-    const notaHtml = nota ? `<div class="kanban-card-note"> ${esc(nota)}</div>` : '';
+    const notaHtml = nota ? `<div class="kanban-card-note">${esc(nota)}</div>` : '';
     return `<div class="kanban-card" draggable="true" data-id="${t.id}"
       ondragstart="onDragStart(event,${t.id})"
       ondragend="onDragEnd(event)">

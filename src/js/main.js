@@ -1,17 +1,17 @@
-import { initCselGlobalClose, toggleCsel, pickCsel } from '../../gerenciador-de-estudos-atualizado/src/js/csel.js';
+import { initCselGlobalClose, toggleCsel, pickCsel } from './csel.js';
 import {
   loadCategories, openCatModal, closeCatModal, saveCategory, deleteCat,
   pickColor, initCategoryModals,
-} from '../../gerenciador-de-estudos-atualizado/src/js/categories.js';
+} from './categories.js';
 import {
   loadSettings, openSettings, closeSettings, saveSettings,
   startTimer, togglePause, askStop, closeConfirm, confirmStop, dismissAlarm,
   initTimerModals,
-} from '../../gerenciador-de-estudos-atualizado/src/js/timer.js';
+} from './timer.js';
 import {
   loadChart, loadStats, loadSessions, setPeriod, toggleGroup, deleteSess,
   openEditSess, closeEditSess, saveEditSess, initSessionModals,
-} from '../../gerenciador-de-estudos-atualizado/src/js/sessions.js';
+} from './sessions.js';
 import {
   loadTasks, onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop,
   undoComplete, deleteTask, openAddTask, openEditTask, closeAddTask, saveTask, initTaskModals,
@@ -20,7 +20,7 @@ import {
   loadCronograma, openAddSchedule, closeAddSchedule, saveScheduleEntry, removeScheduleEntry,
   onCatChipDragStart, onCatChipDragEnd, onEntryDragStart, onEntryDragEnd,
   onDiaDragOver, onDiaDragLeave, onDiaDrop, initCronogramaModals,
-} from '../../gerenciador-de-estudos-atualizado/src/js/cronograma.js';
+} from './cronograma.js';
 
 const API = 'http://localhost:8000/api';
 
