@@ -2,7 +2,7 @@
 
 Aplicação local de gerenciamento de tempo e tarefas de estudo, inspirada no Clockify. Roda completamente offline, sem necessidade de servidor externo ou conta em nuvem.
 
-> Sou formado em Engenharia da Computação pela UnB e comecei a usar esse projeto em 2025 para me ajudar a estudar e organizar meu tempo. À medida que sentir necessidade, vou adicionando novas funcionalidades — essa é a quarta versão.
+> Sou formado em Engenharia da Computação pela UnB e comecei a usar esse projeto em 2025 para me ajudar a estudar para concurso e organizar meu tempo. À medida que sentir necessidade, vou adicionando novas funcionalidades — essa é a terceira versão.
 
 ---
 
