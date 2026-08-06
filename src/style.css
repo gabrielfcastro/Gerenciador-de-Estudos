@@ -228,7 +228,17 @@ header{
 /* ── chart card ── */
 .chart-card{padding:24px}
 .chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.chart-head-left{display:flex;align-items:center;gap:14px}
 .chart-head h2{font-size:.95rem;font-weight:700}
+.period-nav{display:none;align-items:center;gap:7px}
+.period-nav-btn{
+  background:var(--surface2);border:1px solid var(--border2);color:var(--text2);
+  cursor:pointer;font-size:.9rem;width:24px;height:24px;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;transition:all .15s;line-height:1;padding:0;
+}
+.period-nav-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent);background:rgba(124,111,247,.08)}
+.period-nav-btn:disabled{opacity:.3;cursor:not-allowed}
+.period-nav-label{font-size:.76rem;font-weight:600;color:var(--text2);min-width:88px;text-align:center;font-variant-numeric:tabular-nums}
 .period-tabs{
   display:flex;gap:2px;
   background:var(--surface3);border:1px solid var(--border);

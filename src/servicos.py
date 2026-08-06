@@ -84,21 +84,21 @@ class ServicoSessoes:
         return ServicoSessoes._mapear(res)
 
     @staticmethod
-    def listar(periodo: str, categoria_id=None) -> list:
+    def listar(periodo: str, categoria_id=None, referencia=None) -> list:
         return [ServicoSessoes._mapear(s)
-                for s in RepositorioSessoes.obter_filtradas(periodo, categoria_id)]
+                for s in RepositorioSessoes.obter_filtradas(periodo, categoria_id, referencia)]
 
     @staticmethod
-    def dados_grafico(periodo: str, categoria_id=None) -> list:
-        dados = RepositorioSessoes.obter_dados_grafico(periodo, categoria_id)
+    def dados_grafico(periodo: str, categoria_id=None, referencia=None) -> list:
+        dados = RepositorioSessoes.obter_dados_grafico(periodo, categoria_id, referencia)
         for d in dados:
             d["category_name"]  = d.get("categoria_nome")
             d["category_color"] = d.get("categoria_cor")
         return dados
 
     @staticmethod
-    def estatisticas(periodo: str) -> dict:
-        stats = RepositorioSessoes.obter_estatisticas(periodo)
+    def estatisticas(periodo: str, referencia=None) -> dict:
+        stats = RepositorioSessoes.obter_estatisticas(periodo, referencia)
         return {
             "total_seconds": stats["total_segundos"],
             "session_count": stats["total_sessoes"],

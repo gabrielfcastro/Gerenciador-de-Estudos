@@ -1,6 +1,3 @@
-// ── Funções puras de formatação/escape, usadas por vários módulos ────────────
-// Nenhuma função aqui toca o DOM ou guarda estado — só transforma dados.
-
 export function esc(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
@@ -23,7 +20,6 @@ export function fmtDuration(secs) {
   return `${s}s`;
 }
 
-/** Converte "1h15m", "45m", "90" (minutos) em segundos. Retorna null se inválido. */
 export function parseGoal(str) {
   if (!str) return null;
   str = str.trim().toLowerCase();
@@ -63,4 +59,72 @@ export function toLocalDatetimeValue(isoStr) {
 
 export function toUTCIso(localStr) {
   return new Date(localStr).toISOString();
+}
+
+function segundaDaSemana(d) {
+  const dia  = d.getDay();
+  const diff = dia === 0 ? -6 : 1 - dia;
+  const seg  = new Date(d);
+  seg.setDate(d.getDate() + diff);
+  return seg;
+}
+
+export function deslocarReferencia(period, offset, hoje = new Date()) {
+  const d = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+  if (period === 'today') {
+    d.setDate(d.getDate() - offset);
+  } else if (period === 'week') {
+    d.setDate(d.getDate() - offset * 7);
+  } else if (period === 'month') {
+    d.setDate(1);
+    d.setMonth(d.getMonth() - offset);
+  }
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+export function rotuloPeriodoNavegavel(period, offset, hoje = new Date()) {
+  const base = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+
+  if (period === 'today') {
+    if (offset === 0) return 'Hoje';
+    const d = new Date(base);
+    d.setDate(d.getDate() - offset);
+    return `${d.getDate()} de ${MESES_NOMES[d.getMonth()].toLowerCase()}`;
+  }
+
+  if (period === 'week') {
+    if (offset === 0) return 'Esta semana';
+    const ref = new Date(base);
+    ref.setDate(ref.getDate() - offset * 7);
+    const seg = segundaDaSemana(ref);
+    const dom = new Date(seg);
+    dom.setDate(seg.getDate() + 6);
+    return `${pad(seg.getDate())}/${pad(seg.getMonth() + 1)} – ${pad(dom.getDate())}/${pad(dom.getMonth() + 1)}`;
+  }
+
+  if (period === 'month') {
+    if (offset === 0) return 'Este mês';
+    const d = new Date(base);
+    d.setDate(1);
+    d.setMonth(d.getMonth() - offset);
+    return `${MESES_NOMES[d.getMonth()]} de ${d.getFullYear()}`;
+  }
+
+  return '';
+}
+
+export function tooltipDuracao(horas) {
+  return fmtDuration(Math.round(horas * 3600));
+}
+
+// Formata valores decimais de hora (ex: 4.5) do eixo do gráfico como "4h30"
+// em vez de "4.5h" — mais rápido de ler de relance.
+export function fmtEixoHoras(horasDecimais) {
+  const totalMin = Math.round(horasDecimais * 60);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h > 0 && m > 0) return `${h}h${pad(m)}`;
+  if (h > 0) return `${h}h`;
+  if (m > 0) return `${m}m`;
+  return '0h';
 }

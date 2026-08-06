@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import {
   esc, pad, fmtClock, fmtDuration, parseGoal,
   formatarLabels, toLocalDatetimeValue, toUTCIso,
+  deslocarReferencia, rotuloPeriodoNavegavel, tooltipDuracao,
 } from '../src/js/utils.js';
 
 test('esc: escapa &, < e > para uso seguro em innerHTML', () => {
@@ -131,4 +132,67 @@ test('toLocalDatetimeValue + toUTCIso: ida e volta preserva o instante original'
   const local     = toLocalDatetimeValue(original);
   const deVolta   = toUTCIso(local);
   assert.equal(deVolta, '2026-03-15T14:30:00.000Z');
+});
+
+// ── deslocarReferencia / rotuloPeriodoNavegavel / tooltipDuracao ──
+// (navegação pra semana/mês/dia anterior no dashboard)
+
+const HOJE_FIXO = new Date(2026, 6, 31); // 31 de julho de 2026 (sexta-feira)
+
+test('deslocarReferencia: "today" com offset 0 retorna a própria data', () => {
+  assert.equal(deslocarReferencia('today', 0, HOJE_FIXO), '2026-07-31');
+});
+
+test('deslocarReferencia: "today" volta dia a dia', () => {
+  assert.equal(deslocarReferencia('today', 1, HOJE_FIXO), '2026-07-30');
+  assert.equal(deslocarReferencia('today', 31, HOJE_FIXO), '2026-06-30');
+});
+
+test('deslocarReferencia: "week" volta de 7 em 7 dias', () => {
+  assert.equal(deslocarReferencia('week', 1, HOJE_FIXO), '2026-07-24');
+  assert.equal(deslocarReferencia('week', 2, HOJE_FIXO), '2026-07-17');
+});
+
+test('deslocarReferencia: "month" sempre ancora no dia 1 (evita bug de rollover de mês)', () => {
+  assert.equal(deslocarReferencia('month', 0, HOJE_FIXO), '2026-07-01');
+  assert.equal(deslocarReferencia('month', 1, HOJE_FIXO), '2026-06-01');
+  assert.equal(deslocarReferencia('month', 7, HOJE_FIXO), '2025-12-01');
+});
+
+test('deslocarReferencia: dia 31 subtraindo meses não "vaza" pro mês seguinte', () => {
+  const hoje = new Date(2026, 2, 31); // 31 de março de 2026
+  // se não forçasse dia=1, 31 de março - 1 mês viraria "3 de março" (bug clássico do JS Date)
+  assert.equal(deslocarReferencia('month', 1, hoje), '2026-02-01');
+});
+
+test('rotuloPeriodoNavegavel: "today" no offset 0 mostra "Hoje"', () => {
+  assert.equal(rotuloPeriodoNavegavel('today', 0, HOJE_FIXO), 'Hoje');
+});
+
+test('rotuloPeriodoNavegavel: "today" com offset mostra "D de mês"', () => {
+  assert.equal(rotuloPeriodoNavegavel('today', 1, HOJE_FIXO), '30 de julho');
+});
+
+test('rotuloPeriodoNavegavel: "week" no offset 0 mostra "Esta semana"', () => {
+  assert.equal(rotuloPeriodoNavegavel('week', 0, HOJE_FIXO), 'Esta semana');
+});
+
+test('rotuloPeriodoNavegavel: "week" com offset mostra o intervalo segunda–domingo', () => {
+  assert.equal(rotuloPeriodoNavegavel('week', 1, HOJE_FIXO), '20/07 – 26/07');
+});
+
+test('rotuloPeriodoNavegavel: "month" no offset 0 mostra "Este mês"', () => {
+  assert.equal(rotuloPeriodoNavegavel('month', 0, HOJE_FIXO), 'Este mês');
+});
+
+test('rotuloPeriodoNavegavel: "month" com offset mostra "Mês de Ano"', () => {
+  assert.equal(rotuloPeriodoNavegavel('month', 1, HOJE_FIXO), 'Junho de 2026');
+  assert.equal(rotuloPeriodoNavegavel('month', 2, HOJE_FIXO), 'Maio de 2026');
+});
+
+test('tooltipDuracao: converte horas fracionadas em "XhYm" em vez de decimal', () => {
+  assert.equal(tooltipDuracao(2.7), '2h 42m');
+  assert.equal(tooltipDuracao(1), '1h');
+  assert.equal(tooltipDuracao(0.5), '30m');
+  assert.equal(tooltipDuracao(0), '0s');
 });

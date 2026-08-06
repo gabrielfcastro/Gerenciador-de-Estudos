@@ -1,35 +1,60 @@
-// ── Módulo de sessões (gráfico, estatísticas, lista, edição) ─────────────────
-// Único lugar que sabe o que é "o período selecionado atualmente" — antes
-// isso era uma variável global (currentPeriod) que qualquer função podia ler
-// e escrever. Agora é estado privado deste módulo; quem precisa saber o
-// período atual chama getCurrentPeriod().
-
 import { Api } from './api.js';
-import { esc, fmtDuration, formatarLabels, toLocalDatetimeValue, toUTCIso } from './utils.js';
+import {
+  esc, fmtDuration, formatarLabels, toLocalDatetimeValue, toUTCIso,
+  deslocarReferencia, rotuloPeriodoNavegavel, tooltipDuracao, fmtEixoHoras,
+} from './utils.js';
 import { buildCsel, registerCsel } from './csel.js';
 import { getCategories, onCategoriesChange, onCategoryDeleted, refreshHours } from './categories.js';
 
 let currentPeriod = 'week';
+let periodOffset  = 0;
 let chart         = null;
 let openGroups    = new Set();
 let editSessId    = null;
 let editSelCatId  = null;
+
+const PERIODOS_NAVEGAVEIS = ['today', 'week', 'month'];
+function isNavegavel(period) { return PERIODOS_NAVEGAVEIS.includes(period); }
+
+function getReferencia() {
+  return isNavegavel(currentPeriod) ? deslocarReferencia(currentPeriod, periodOffset) : null;
+}
+
+function renderPeriodNav() {
+  const nav = document.getElementById('period-nav');
+  if (!nav) return;
+  if (!isNavegavel(currentPeriod)) { nav.style.display = 'none'; return; }
+  nav.style.display = 'flex';
+  document.getElementById('period-nav-label').textContent = rotuloPeriodoNavegavel(currentPeriod, periodOffset);
+  document.getElementById('period-nav-next').disabled = periodOffset === 0;
+}
+
+export function prevPeriod() {
+  if (!isNavegavel(currentPeriod)) return;
+  periodOffset += 1;
+  renderPeriodNav();
+  refreshAll();
+}
+
+export function nextPeriod() {
+  if (!isNavegavel(currentPeriod) || periodOffset === 0) return;
+  periodOffset -= 1;
+  renderPeriodNav();
+  refreshAll();
+}
 
 registerCsel('edit-csel', {
   onSelect: (id) => { editSelCatId = id; },
   getCategories,
 });
 
-// Sempre que uma categoria for criada/editada/removida, as horas por matéria
-// mudam — quem sabe qual período está em uso somos nós, então somos nós que
-// pedimos o recálculo (categories.js não precisa saber que "período" existe).
 onCategoriesChange(() => refreshHours(currentPeriod));
 onCategoryDeleted(() => loadChart());
 
 export function getCurrentPeriod() { return currentPeriod; }
 
 export async function loadChart() {
-  try { renderChart(await Api.getChart(currentPeriod)); }
+  try { renderChart(await Api.getChart(currentPeriod, null, getReferencia())); }
   catch {}
 }
 
@@ -59,7 +84,7 @@ function renderChart(data) {
       data: { labels, datasets: [{ data: values, backgroundColor: colors.map(c => c + 'cc'), borderColor: colors, borderWidth: 2 }] },
       options: {
         responsive: false,
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.label}: ${c.parsed.toFixed(1)}h` } } },
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.label}: ${tooltipDuracao(c.parsed)}` } } },
         cutout: '60%',
       }
     });
@@ -69,7 +94,7 @@ function renderChart(data) {
       <div class="pie-legend-item">
         <div class="pie-legend-dot" style="background:${colors[i]}"></div>
         <span class="pie-legend-name">${esc(l)}</span>
-        <span class="pie-legend-val">${values[i].toFixed(1)}h</span>
+        <span class="pie-legend-val">${tooltipDuracao(values[i])}</span>
       </div>`).join('');
     return;
   }
@@ -101,11 +126,11 @@ function renderChart(data) {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { labels: { color: '#4e5370', font: { size: 12 }, boxWidth: 10, borderRadius: 4 } },
-        tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${c.parsed.y.toFixed(1)}h` } }
+        tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${tooltipDuracao(c.parsed.y)}` } }
       },
       scales: {
         x: { stacked: true, ticks: { color: '#4e5370', font: { size: 11 } }, grid: { color: '#a8adc0' } },
-        y: { stacked: true, ticks: { color: '#4e5370', font: { size: 11 }, callback: v => v + 'h' }, grid: { color: '#a8adc0' } }
+        y: { stacked: true, ticks: { color: '#4e5370', font: { size: 11 }, callback: v => fmtEixoHoras(v) }, grid: { color: '#a8adc0' } }
       }
     }
   });
@@ -113,6 +138,7 @@ function renderChart(data) {
 
 export function setPeriod(p, btn) {
   currentPeriod = p;
+  periodOffset  = 0;
   document.querySelectorAll('.ptab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   refreshAll();
@@ -120,7 +146,7 @@ export function setPeriod(p, btn) {
 
 export async function loadStats() {
   try {
-    const { total_seconds: t, session_count: c } = await Api.getStats(currentPeriod);
+    const { total_seconds: t, session_count: c } = await Api.getStats(currentPeriod, getReferencia());
     document.getElementById('stat-total').textContent = t ? fmtDuration(t) : '—';
     document.getElementById('stat-count').textContent = c || '—';
     document.getElementById('stat-avg').textContent   = c ? fmtDuration(Math.round(t / c)) : '—';
@@ -128,12 +154,12 @@ export async function loadStats() {
 }
 
 export async function loadSessions() {
-  try { renderSessions(await Api.getSessions(currentPeriod)); }
+  try { renderSessions(await Api.getSessions(currentPeriod, null, getReferencia())); }
   catch {}
 }
 
-/** Recarrega tudo que depende do período atual — usado após iniciar/parar/editar/excluir sessões. */
 export async function refreshAll() {
+  renderPeriodNav();
   await Promise.all([loadChart(), loadStats(), loadSessions(), refreshHours(currentPeriod)]);
 }
 

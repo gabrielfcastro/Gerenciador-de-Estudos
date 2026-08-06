@@ -1,4 +1,5 @@
 import pytest
+import time
 from conftest import now_iso, calc_duracao
 
 
@@ -201,6 +202,88 @@ class TestSessoes:
         assert "period_key" in dados[0]
         assert "total_seconds" in dados[0]
 
+    # ── novos: navegação por período (referencia) ──
+
+    def _sessao_em(self, inicio_iso, fim_iso, cat_id=None):
+        from repositorio import RepositorioSessoes
+        s = RepositorioSessoes.iniciar(cat_id, inicio_iso, "")
+        return RepositorioSessoes.parar(s["id"], fim_iso, calc_duracao)
+
+    def test_filtradas_today_usa_referencia_em_vez_de_hoje(self):
+        from repositorio import RepositorioSessoes
+        self._sessao_em("2026-07-10T08:00:00+00:00", "2026-07-10T09:00:00+00:00")
+        self._sessao_em("2026-07-15T08:00:00+00:00", "2026-07-15T09:00:00+00:00")
+
+        resultado = RepositorioSessoes.obter_filtradas("today", None, referencia="2026-07-10")
+        assert len(resultado) == 1
+        assert resultado[0]["inicio"].startswith("2026-07-10")
+
+    def test_filtradas_week_usa_referencia(self):
+        from repositorio import RepositorioSessoes
+        # segunda 2026-07-13 a domingo 2026-07-19
+        self._sessao_em("2026-07-13T08:00:00+00:00", "2026-07-13T09:00:00+00:00")
+        self._sessao_em("2026-07-19T20:00:00+00:00", "2026-07-19T21:00:00+00:00")
+        # fora da semana (semana seguinte)
+        self._sessao_em("2026-07-20T08:00:00+00:00", "2026-07-20T09:00:00+00:00")
+
+        resultado = RepositorioSessoes.obter_filtradas("week", None, referencia="2026-07-15")
+        assert len(resultado) == 2
+
+    def test_filtradas_month_usa_referencia(self):
+        from repositorio import RepositorioSessoes
+        self._sessao_em("2026-06-05T08:00:00+00:00", "2026-06-05T09:00:00+00:00")
+        self._sessao_em("2026-07-05T08:00:00+00:00", "2026-07-05T09:00:00+00:00")
+
+        resultado = RepositorioSessoes.obter_filtradas("month", None, referencia="2026-06-15")
+        assert len(resultado) == 1
+        assert resultado[0]["inicio"].startswith("2026-06")
+
+    def test_filtradas_sem_referencia_mantem_comportamento_atual(self):
+        from repositorio import RepositorioSessoes
+        self._criar_sessao_completa()
+        resultado = RepositorioSessoes.obter_filtradas("today", None)
+        assert len(resultado) == 1
+
+    def test_estatisticas_usa_referencia(self):
+        from repositorio import RepositorioSessoes
+        self._sessao_em("2026-06-05T08:00:00+00:00", "2026-06-05T09:00:00+00:00")
+        self._sessao_em("2026-07-05T08:00:00+00:00", "2026-07-05T09:30:00+00:00")
+
+        stats_junho = RepositorioSessoes.obter_estatisticas("month", referencia="2026-06-15")
+        assert stats_junho["total_sessoes"] == 1
+        assert stats_junho["total_segundos"] == 3600
+
+        stats_julho = RepositorioSessoes.obter_estatisticas("month", referencia="2026-07-15")
+        assert stats_julho["total_sessoes"] == 1
+        assert stats_julho["total_segundos"] == 5400
+
+    def test_dados_grafico_usa_referencia(self):
+        from repositorio import RepositorioSessoes
+        self._sessao_em("2026-06-05T08:00:00+00:00", "2026-06-05T09:00:00+00:00")
+        self._sessao_em("2026-07-05T08:00:00+00:00", "2026-07-05T09:00:00+00:00")
+
+        dados = RepositorioSessoes.obter_dados_grafico("month", None, referencia="2026-06-15")
+        assert len(dados) == 1
+        assert dados[0]["total_seconds"] == 3600
+
+    def test_today_com_servidor_em_fuso_negativo_nao_duplica_conversao_de_localtime(self, monkeypatch):
+        monkeypatch.setenv("TZ", "America/Sao_Paulo")
+        time.tzset()
+        try:
+            from repositorio import RepositorioSessoes
+            self._sessao_em("2026-07-10T22:00:00+00:00", "2026-07-10T23:00:00+00:00")
+
+            resultado_grafico = RepositorioSessoes.obter_dados_grafico("today", None, referencia="2026-07-10")
+            resultado_lista   = RepositorioSessoes.obter_filtradas("today", None, referencia="2026-07-10")
+            resultado_stats   = RepositorioSessoes.obter_estatisticas("today", referencia="2026-07-10")
+
+            assert len(resultado_grafico) == 1, "gráfico não pode 'perder' a sessão de hoje"
+            assert len(resultado_lista) == 1, "lista de sessões não pode 'perder' a sessão de hoje"
+            assert resultado_stats["total_sessoes"] == 1, "estatísticas não podem 'perder' a sessão de hoje"
+        finally:
+            monkeypatch.delenv("TZ", raising=False)
+            time.tzset()
+
 class TestTarefas:
 
     def test_criar_sem_categoria(self):
@@ -242,8 +325,6 @@ class TestTarefas:
         tarefas = RepositorioTarefas.listar()
         assert len(tarefas) == 1
         assert tarefas[0]["categoria_id"] is None
-
-    # ── novos: nota + edição ──
 
     def test_criar_com_nota(self):
         from repositorio import RepositorioTarefas, RepositorioCategorias

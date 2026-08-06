@@ -5,7 +5,6 @@ import http.client
 import pytest
 
 def req(port, method, path, body=None):
-    """Dispara uma requisição HTTP e retorna (status_code, dados)."""
     conn = http.client.HTTPConnection("localhost", port, timeout=5)
     headers = {"Content-Type": "application/json"} if body is not None else {}
     payload = json.dumps(body).encode() if body is not None else None
@@ -140,6 +139,13 @@ class TestSessoes:
         assert status == 200
         assert len(data) == 1
 
+    def test_get_com_referencia_isola_o_dia_indicado(self, porta):
+        _, s = self._iniciar(porta)
+        self._parar(porta, s["id"])
+        status, data = req(porta, "GET", "/api/sessions?period=today&referencia=2020-01-15")
+        assert status == 200
+        assert data == []
+
     def test_put_edita_sessao(self, porta):
         _, s = self._iniciar(porta)
         self._parar(porta, s["id"])
@@ -189,6 +195,35 @@ class TestStats:
         assert data["total_seconds"] == 3600
         assert data["session_count"] == 1
 
+    def test_stats_com_referencia_filtra_pelo_mes_indicado(self, porta):
+        _, s1 = req(porta, "POST", "/api/sessions/start", {"note": ""})
+        req(porta, "POST", "/api/sessions/stop", {"session_id": s1["id"], "duration_seconds": 3600})
+        status, data = req(porta, "GET", "/api/stats?period=month&referencia=2020-01-15")
+        assert status == 200
+        assert data["total_seconds"] == 0
+        assert data["session_count"] == 0
+
+class TestChart:
+
+    def test_get_sem_dados_retorna_lista_vazia(self, porta):
+        status, data = req(porta, "GET", "/api/chart?period=week")
+        assert status == 200
+        assert data == []
+
+    def test_get_com_referencia_isola_o_periodo_indicado(self, porta):
+        _, cat = req(porta, "POST", "/api/categories", {"name": "Dir", "color": "#7c6ff7"})
+        _, s1 = req(porta, "POST", "/api/sessions/start", {"category_id": cat["id"], "note": ""})
+        req(porta, "POST", "/api/sessions/stop", {"session_id": s1["id"], "duration_seconds": 3600})
+
+        # uma referência de 5 anos atrás não deve enxergar a sessão de hoje
+        status, data = req(porta, "GET", f"/api/chart?period=month&referencia=2020-01-15")
+        assert status == 200
+        assert data == []
+
+        status, data = req(porta, "GET", "/api/chart?period=month")
+        assert status == 200
+        assert len(data) >= 1
+
 class TestTarefas:
 
     def test_get_lista_vazia(self, porta):
@@ -233,8 +268,6 @@ class TestTarefas:
         assert status == 200
         _, lista = req(porta, "GET", "/api/tasks")
         assert lista == []
-
-    # ── novos: nota + PUT (edição) ──
 
     def test_post_tarefa_com_nota(self, porta):
         _, cat = req(porta, "POST", "/api/categories", {"name": "Dir", "color": "#7c6ff7"})

@@ -99,7 +99,14 @@
 
     <div class="chart-card card">
       <div class="chart-head">
-        <h2>Horas estudadas</h2>
+        <div class="chart-head-left">
+          <h2>Horas estudadas</h2>
+          <div class="period-nav" id="period-nav" style="display:none">
+            <button class="period-nav-btn" onclick="prevPeriod()" title="Período anterior">‹</button>
+            <span class="period-nav-label" id="period-nav-label"></span>
+            <button class="period-nav-btn" id="period-nav-next" onclick="nextPeriod()" title="Próximo período">›</button>
+          </div>
+        </div>
         <div class="period-tabs">
           <button class="ptab" onclick="setPeriod('today',this)">Hoje</button>
           <button class="ptab active" onclick="setPeriod('week',this)">Semana</button>
@@ -119,8 +126,9 @@
 
   </main>
 </div>
-</div>
+</div><!-- /view-timer -->
 
+<!-- ── Kanban ── -->
 <div id="view-kanban" class="view">
   <div class="kanban-wrap">
     <div class="kanban-col todo-col">
@@ -152,6 +160,7 @@
   </div>
 </div>
 
+<!-- ── Cronograma ── -->
 <div id="view-cronograma" class="view">
   <div class="cronograma-wrap">
     <div class="cronograma-cats-wrap">
@@ -159,10 +168,12 @@
       <div class="cronograma-cats" id="cronograma-cats"></div>
     </div>
     <div class="cronograma-grid" id="cronograma-grid">
+      <!-- preenchido pelo JS -->
     </div>
   </div>
 </div>
 
+<!-- undo banner -->
 <div class="undo-banner" id="undo-banner">
   <span id="undo-text">Tarefa concluída</span>
   <button class="undo-btn" onclick="undoComplete()">Desfazer</button>
@@ -215,7 +226,7 @@
     </div>
     <div class="form-group">
       <label>Nota (opcional)</label>
-      <textarea id="inp-task-note" rows="3" placeholder="Descrição" maxlength="500"></textarea>
+      <textarea id="inp-task-note" rows="3" placeholder="Detalhe melhor a tarefa…" maxlength="500"></textarea>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeAddTask()">Cancelar</button>

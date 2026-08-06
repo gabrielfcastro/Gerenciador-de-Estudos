@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-// captura as chamadas de fetch feitas pelo api.js, sem bater na rede de verdade
 const chamadas = [];
 globalThis.fetch = async (url, options) => {
   chamadas.push({ url, options });
@@ -44,4 +43,24 @@ test('updateTask: chama PUT /api/tasks/:id com titulo, categoria_id e nota', asy
     categoria_id: 9,
     nota: 'nota editada',
   });
+});
+
+test('getChart: inclui referencia na query string quando fornecida', async () => {
+  await Api.getChart('week', null, '2026-07-20');
+  assert.equal(chamadas[0].url, 'http://localhost:8000/api/chart?period=week&referencia=2026-07-20');
+});
+
+test('getChart: sem referencia, mantém o formato antigo (compatibilidade)', async () => {
+  await Api.getChart('week');
+  assert.equal(chamadas[0].url, 'http://localhost:8000/api/chart?period=week');
+});
+
+test('getStats: inclui referencia na query string quando fornecida', async () => {
+  await Api.getStats('month', '2026-06-15');
+  assert.equal(chamadas[0].url, 'http://localhost:8000/api/stats?period=month&referencia=2026-06-15');
+});
+
+test('getSessions: inclui referencia na query string quando fornecida', async () => {
+  await Api.getSessions('today', null, '2026-07-10');
+  assert.equal(chamadas[0].url, 'http://localhost:8000/api/sessions?period=today&referencia=2026-07-10');
 });

@@ -49,18 +49,25 @@ class RepositorioCategorias:
 
 class RepositorioSessoes:
     @staticmethod
-    def obter_filtradas(periodo, categoria_id):
+    def obter_filtradas(periodo, categoria_id, referencia=None):
+        referencia = referencia or "now"
         lista_de_filtros = ["s.fim IS NOT NULL"]
         parametros = []
 
         if periodo == "today":
-            lista_de_filtros.append("date(s.inicio, 'localtime') = date('now', 'localtime')")
+            if referencia == "now":
+                lista_de_filtros.append("date(s.inicio, 'localtime') = date('now', 'localtime')")
+            else:
+                lista_de_filtros.append("date(s.inicio, 'localtime') = date(?)")
+                parametros.append(referencia)
         elif periodo == "week":
-            lista_de_filtros.append("s.inicio >= datetime('now', 'weekday 0', '-6 days')")
-            lista_de_filtros.append("s.inicio < datetime('now', 'weekday 0', '+1 day')")
+            lista_de_filtros.append("s.inicio >= datetime(?, 'weekday 0', '-6 days')")
+            lista_de_filtros.append("s.inicio < datetime(?, 'weekday 0', '+1 day')")
+            parametros.extend([referencia, referencia])
         elif periodo == "month":
-            lista_de_filtros.append("s.inicio >= datetime('now', 'start of month')")
-            lista_de_filtros.append("s.inicio < datetime('now', 'start of month', '+1 month')")
+            lista_de_filtros.append("s.inicio >= datetime(?, 'start of month')")
+            lista_de_filtros.append("s.inicio < datetime(?, 'start of month', '+1 month')")
+            parametros.extend([referencia, referencia])
         elif periodo in ["6months", "year"]:
             mapeamento = {"6months": "-6 months", "year": "-1 year"}
             lista_de_filtros.append(f"s.inicio >= datetime('now', '{mapeamento[periodo]}')")
@@ -80,22 +87,29 @@ class RepositorioSessoes:
             return converter_linhas_para_lista(conn.execute(sql, parametros).fetchall())
 
     @staticmethod
-    def obter_dados_grafico(periodo, categoria_id):
+    def obter_dados_grafico(periodo, categoria_id, referencia=None):
+        referencia = referencia or "now"
         lista_de_filtros = ["s.fim IS NOT NULL"]
         parametros = []
 
         if periodo == "today":
-            lista_de_filtros.append("date(s.inicio, 'localtime') = date('now', 'localtime')")
+            if referencia == "now":
+                lista_de_filtros.append("date(s.inicio, 'localtime') = date('now', 'localtime')")
+            else:
+                lista_de_filtros.append("date(s.inicio, 'localtime') = date(?)")
+                parametros.append(referencia)
             formato_data = "%Y-%m-%d"
 
         elif periodo == "week":
-            lista_de_filtros.append("s.inicio >= datetime('now', 'weekday 0', '-6 days')")
-            lista_de_filtros.append("s.inicio < datetime('now', 'weekday 0', '+1 day')")
+            lista_de_filtros.append("s.inicio >= datetime(?, 'weekday 0', '-6 days')")
+            lista_de_filtros.append("s.inicio < datetime(?, 'weekday 0', '+1 day')")
+            parametros.extend([referencia, referencia])
             formato_data = "%Y-%m-%d"
 
         elif periodo == "month":
-            lista_de_filtros.append("s.inicio >= datetime('now', 'start of month')")
-            lista_de_filtros.append("s.inicio < datetime('now', 'start of month', '+1 month')")
+            lista_de_filtros.append("s.inicio >= datetime(?, 'start of month')")
+            lista_de_filtros.append("s.inicio < datetime(?, 'start of month', '+1 month')")
+            parametros.extend([referencia, referencia])
             formato_data = "%Y-%W"
 
         elif periodo == "6months":
@@ -127,16 +141,25 @@ class RepositorioSessoes:
             return converter_linhas_para_lista(conn.execute(sql, parametros).fetchall())
 
     @staticmethod
-    def obter_estatisticas(periodo):
+    def obter_estatisticas(periodo, referencia=None):
+        referencia = referencia or "now"
         lista_de_filtros = ["fim IS NOT NULL"]
+        parametros = []
+
         if periodo == "today":
-            lista_de_filtros.append("date(inicio, 'localtime') = date('now', 'localtime')")
+            if referencia == "now":
+                lista_de_filtros.append("date(inicio, 'localtime') = date('now', 'localtime')")
+            else:
+                lista_de_filtros.append("date(inicio, 'localtime') = date(?)")
+                parametros.append(referencia)
         elif periodo == "week":
-            lista_de_filtros.append("inicio >= datetime('now', 'weekday 0', '-6 days')")
-            lista_de_filtros.append("inicio < datetime('now', 'weekday 0', '+1 day')")
+            lista_de_filtros.append("inicio >= datetime(?, 'weekday 0', '-6 days')")
+            lista_de_filtros.append("inicio < datetime(?, 'weekday 0', '+1 day')")
+            parametros.extend([referencia, referencia])
         elif periodo == "month":
-            lista_de_filtros.append("inicio >= datetime('now', 'start of month')")
-            lista_de_filtros.append("inicio < datetime('now', 'start of month', '+1 month')")
+            lista_de_filtros.append("inicio >= datetime(?, 'start of month')")
+            lista_de_filtros.append("inicio < datetime(?, 'start of month', '+1 month')")
+            parametros.extend([referencia, referencia])
         elif periodo == "6months":
             lista_de_filtros.append("inicio >= datetime('now', '-6 months')")
         elif periodo == "year":
@@ -144,8 +167,8 @@ class RepositorioSessoes:
 
         clausula_where = " AND ".join(lista_de_filtros)
         with get_db() as conn:
-            total = conn.execute(f"SELECT COALESCE(SUM(duracao), 0) as t FROM sessions WHERE {clausula_where}").fetchone()["t"]
-            count = conn.execute(f"SELECT COUNT(*) as c FROM sessions WHERE {clausula_where}").fetchone()["c"]
+            total = conn.execute(f"SELECT COALESCE(SUM(duracao), 0) as t FROM sessions WHERE {clausula_where}", parametros).fetchone()["t"]
+            count = conn.execute(f"SELECT COUNT(*) as c FROM sessions WHERE {clausula_where}", parametros).fetchone()["c"]
             return {"total_segundos": total, "total_sessoes": count}
 
     @staticmethod

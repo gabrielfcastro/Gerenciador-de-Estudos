@@ -1,7 +1,3 @@
-// ── Camada de acesso à API ────────────────────────────────────────────────────
-// Nenhum outro módulo deve chamar fetch() diretamente — tudo passa por aqui.
-// Isso centraliza a URL base e deixa os módulos de UI livres de detalhes HTTP.
-
 const API_BASE = 'http://localhost:8000/api';
 
 function request(path, options) {
@@ -16,20 +12,21 @@ function withJson(payload) {
 }
 
 export const Api = {
-  // ── configurações ──
   getSettings:  () => request('/settings').then(r => r.json()),
   saveSettings: (blockDuration) => request('/settings', {
     method: 'PUT', ...withJson({ block_duration: blockDuration }),
   }),
 
-  // ── categorias ──
   getCategories:   () => request('/categories').then(r => r.json()),
   createCategory:  (name, color) => request('/categories', { method: 'POST', ...withJson({ name, color }) }),
   updateCategory:  (id, name, color) => request(`/categories/${id}`, { method: 'PUT', ...withJson({ name, color }) }),
   deleteCategory:  (id) => request(`/categories/${id}`, { method: 'DELETE' }),
 
-  // ── sessões ──
-  getSessions:   (period) => request(`/sessions?period=${period}`).then(r => r.json()),
+  getSessions:   (period, categoriaId, referencia) => request(
+    `/sessions?period=${period}` +
+    (categoriaId ? `&categoria_id=${categoriaId}` : '') +
+    (referencia  ? `&referencia=${referencia}`     : '')
+  ).then(r => r.json()),
   startSession:  (categoryId, note) => request('/sessions/start', {
     method: 'POST', ...withJson({ category_id: categoryId, note }),
   }).then(r => r.json()),
@@ -38,10 +35,15 @@ export const Api = {
   }),
   updateSession: (id, payload) => request(`/sessions/${id}`, { method: 'PUT', ...withJson(payload) }),
   deleteSession: (id) => request(`/sessions/${id}`, { method: 'DELETE' }),
-  getChart:      (period) => request(`/chart?period=${period}`).then(r => r.json()),
-  getStats:      (period) => request(`/stats?period=${period}`).then(r => r.json()),
+  getChart:      (period, categoriaId, referencia) => request(
+    `/chart?period=${period}` +
+    (categoriaId ? `&categoria_id=${categoriaId}` : '') +
+    (referencia  ? `&referencia=${referencia}`     : '')
+  ).then(r => r.json()),
+  getStats:      (period, referencia) => request(
+    `/stats?period=${period}` + (referencia ? `&referencia=${referencia}` : '')
+  ).then(r => r.json()),
 
-  // ── tarefas ──
   getTasks:     () => request('/tasks').then(r => r.json()),
   createTask:   (titulo, categoriaId, nota = '') => request('/tasks', {
     method: 'POST', ...withJson({ titulo, categoria_id: categoriaId, nota }),
@@ -51,7 +53,6 @@ export const Api = {
   }),
   deleteTask:   (id) => request(`/tasks/${id}`, { method: 'DELETE' }),
 
-  // ── cronograma ──
   getSchedule:         () => request('/schedule').then(r => r.json()),
   createScheduleEntry: (diaSemana, categoriaId) => request('/schedule', {
     method: 'POST', ...withJson({ dia_semana: diaSemana, categoria_id: categoriaId }),

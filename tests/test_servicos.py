@@ -162,6 +162,36 @@ class TestServicoSessoesValidacao:
             assert res is not None
             assert res["duration_seconds"] == 3600
 
+class TestServicoSessoesReferencia:
+
+    def test_listar_repassa_referencia_pro_repositorio(self):
+        from servicos import ServicoSessoes
+        with patch("servicos.RepositorioSessoes") as mock_repo:
+            mock_repo.obter_filtradas.return_value = []
+            ServicoSessoes.listar("week", None, "2026-07-15")
+            mock_repo.obter_filtradas.assert_called_once_with("week", None, "2026-07-15")
+
+    def test_listar_referencia_e_opcional(self):
+        from servicos import ServicoSessoes
+        with patch("servicos.RepositorioSessoes") as mock_repo:
+            mock_repo.obter_filtradas.return_value = []
+            ServicoSessoes.listar("week", None)
+            mock_repo.obter_filtradas.assert_called_once_with("week", None, None)
+
+    def test_dados_grafico_repassa_referencia(self):
+        from servicos import ServicoSessoes
+        with patch("servicos.RepositorioSessoes") as mock_repo:
+            mock_repo.obter_dados_grafico.return_value = []
+            ServicoSessoes.dados_grafico("month", None, "2026-06-15")
+            mock_repo.obter_dados_grafico.assert_called_once_with("month", None, "2026-06-15")
+
+    def test_estatisticas_repassa_referencia(self):
+        from servicos import ServicoSessoes
+        with patch("servicos.RepositorioSessoes") as mock_repo:
+            mock_repo.obter_estatisticas.return_value = {"total_segundos": 0, "total_sessoes": 0}
+            ServicoSessoes.estatisticas("today", "2026-07-10")
+            mock_repo.obter_estatisticas.assert_called_once_with("today", "2026-07-10")
+
 class TestServicoConfiguracoes:
 
     def test_obter_usa_chave_correta(self):

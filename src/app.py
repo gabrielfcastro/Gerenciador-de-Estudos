@@ -82,7 +82,8 @@ def _criar_roteador():
     r.add("GET",    "/api/sessions",
           lambda qs, body: ServicoSessoes.listar(
               qs.get("period", ["all"])[0],
-              qs.get("categoria_id", [None])[0]))
+              qs.get("categoria_id", [None])[0],
+              qs.get("referencia", [None])[0]))
     r.add("POST",   "/api/sessions/start",
           lambda qs, body: ServicoSessoes.iniciar(
               body.get("category_id"), body.get("note", "")), status=201)
@@ -102,9 +103,12 @@ def _criar_roteador():
     r.add("GET", "/api/chart",
           lambda qs, body: ServicoSessoes.dados_grafico(
               qs.get("period", ["week"])[0],
-              qs.get("categoria_id", [None])[0]))
+              qs.get("categoria_id", [None])[0],
+              qs.get("referencia", [None])[0]))
     r.add("GET", "/api/stats",
-          lambda qs, body: ServicoSessoes.estatisticas(qs.get("period", ["week"])[0]))
+          lambda qs, body: ServicoSessoes.estatisticas(
+              qs.get("period", ["week"])[0],
+              qs.get("referencia", [None])[0]))
 
     r.add("GET",    "/api/tasks",
           lambda qs, body: ServicoTarefas.listar())

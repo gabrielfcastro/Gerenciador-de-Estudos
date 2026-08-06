@@ -11,6 +11,7 @@ import {
 import {
   loadChart, loadStats, loadSessions, setPeriod, toggleGroup, deleteSess,
   openEditSess, closeEditSess, saveEditSess, initSessionModals,
+  prevPeriod, nextPeriod,
 } from './sessions.js';
 import {
   loadTasks, onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop,
@@ -58,7 +59,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   await loadSessions();
 });
 
-// ── Ponte para os atributos onclick/ondrag* do HTML ──
 Object.assign(window, {
   switchView,
   toggleCsel, pickCsel,
@@ -66,6 +66,7 @@ Object.assign(window, {
   openSettings, closeSettings, saveSettings,
   startTimer, togglePause, askStop, closeConfirm, confirmStop, dismissAlarm,
   setPeriod, toggleGroup, deleteSess, openEditSess, closeEditSess, saveEditSess,
+  prevPeriod, nextPeriod,
   onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop,
   undoComplete, deleteTask, openAddTask, openEditTask, closeAddTask, saveTask,
   openAddSchedule, closeAddSchedule, saveScheduleEntry, removeScheduleEntry,
