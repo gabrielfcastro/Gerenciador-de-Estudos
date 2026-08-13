@@ -61,16 +61,16 @@ class RepositorioSessoes:
                 lista_de_filtros.append("date(s.inicio, 'localtime') = date(?)")
                 parametros.append(referencia)
         elif periodo == "week":
-            lista_de_filtros.append("s.inicio >= datetime(?, 'weekday 0', '-6 days')")
-            lista_de_filtros.append("s.inicio < datetime(?, 'weekday 0', '+1 day')")
+            lista_de_filtros.append("datetime(s.inicio, 'localtime') >= datetime(?, 'weekday 0', '-6 days')")
+            lista_de_filtros.append("datetime(s.inicio, 'localtime') < datetime(?, 'weekday 0', '+1 day')")
             parametros.extend([referencia, referencia])
         elif periodo == "month":
-            lista_de_filtros.append("s.inicio >= datetime(?, 'start of month')")
-            lista_de_filtros.append("s.inicio < datetime(?, 'start of month', '+1 month')")
+            lista_de_filtros.append("datetime(s.inicio, 'localtime') >= datetime(?, 'start of month')")
+            lista_de_filtros.append("datetime(s.inicio, 'localtime') < datetime(?, 'start of month', '+1 month')")
             parametros.extend([referencia, referencia])
         elif periodo in ["6months", "year"]:
             mapeamento = {"6months": "-6 months", "year": "-1 year"}
-            lista_de_filtros.append(f"s.inicio >= datetime('now', '{mapeamento[periodo]}')")
+            lista_de_filtros.append(f"datetime(s.inicio, 'localtime') >= datetime('now', 'localtime', '{mapeamento[periodo]}')")
 
         if categoria_id:
             lista_de_filtros.append("s.categoria_id = ?")
@@ -101,23 +101,23 @@ class RepositorioSessoes:
             formato_data = "%Y-%m-%d"
 
         elif periodo == "week":
-            lista_de_filtros.append("s.inicio >= datetime(?, 'weekday 0', '-6 days')")
-            lista_de_filtros.append("s.inicio < datetime(?, 'weekday 0', '+1 day')")
+            lista_de_filtros.append("datetime(s.inicio, 'localtime') >= datetime(?, 'weekday 0', '-6 days')")
+            lista_de_filtros.append("datetime(s.inicio, 'localtime') < datetime(?, 'weekday 0', '+1 day')")
             parametros.extend([referencia, referencia])
             formato_data = "%Y-%m-%d"
 
         elif periodo == "month":
-            lista_de_filtros.append("s.inicio >= datetime(?, 'start of month')")
-            lista_de_filtros.append("s.inicio < datetime(?, 'start of month', '+1 month')")
+            lista_de_filtros.append("datetime(s.inicio, 'localtime') >= datetime(?, 'start of month')")
+            lista_de_filtros.append("datetime(s.inicio, 'localtime') < datetime(?, 'start of month', '+1 month')")
             parametros.extend([referencia, referencia])
             formato_data = "%Y-%W"
 
         elif periodo == "6months":
-            lista_de_filtros.append("s.inicio >= datetime('now', '-6 months')")
+            lista_de_filtros.append("datetime(s.inicio, 'localtime') >= datetime('now', 'localtime', '-6 months')")
             formato_data = "%Y-%m"
 
         elif periodo == "year":
-            lista_de_filtros.append("s.inicio >= datetime('now', '-1 year')")
+            lista_de_filtros.append("datetime(s.inicio, 'localtime') >= datetime('now', 'localtime', '-1 year')")
             formato_data = "%Y-%m"
 
         else:
@@ -128,7 +128,7 @@ class RepositorioSessoes:
             parametros.append(categoria_id)
 
         sql = f"""
-            SELECT strftime('{formato_data}', s.inicio) as period_key,
+            SELECT strftime('{formato_data}', s.inicio, 'localtime') as period_key,
                    c.nome as categoria_nome, c.cor as categoria_cor,
                    SUM(s.duracao) as total_seconds
             FROM sessions s
@@ -153,17 +153,17 @@ class RepositorioSessoes:
                 lista_de_filtros.append("date(inicio, 'localtime') = date(?)")
                 parametros.append(referencia)
         elif periodo == "week":
-            lista_de_filtros.append("inicio >= datetime(?, 'weekday 0', '-6 days')")
-            lista_de_filtros.append("inicio < datetime(?, 'weekday 0', '+1 day')")
+            lista_de_filtros.append("datetime(inicio, 'localtime') >= datetime(?, 'weekday 0', '-6 days')")
+            lista_de_filtros.append("datetime(inicio, 'localtime') < datetime(?, 'weekday 0', '+1 day')")
             parametros.extend([referencia, referencia])
         elif periodo == "month":
-            lista_de_filtros.append("inicio >= datetime(?, 'start of month')")
-            lista_de_filtros.append("inicio < datetime(?, 'start of month', '+1 month')")
+            lista_de_filtros.append("datetime(inicio, 'localtime') >= datetime(?, 'start of month')")
+            lista_de_filtros.append("datetime(inicio, 'localtime') < datetime(?, 'start of month', '+1 month')")
             parametros.extend([referencia, referencia])
         elif periodo == "6months":
-            lista_de_filtros.append("inicio >= datetime('now', '-6 months')")
+            lista_de_filtros.append("datetime(inicio, 'localtime') >= datetime('now', 'localtime', '-6 months')")
         elif periodo == "year":
-            lista_de_filtros.append("inicio >= datetime('now', '-1 year')")
+            lista_de_filtros.append("datetime(inicio, 'localtime') >= datetime('now', 'localtime', '-1 year')")
 
         clausula_where = " AND ".join(lista_de_filtros)
         with get_db() as conn:
