@@ -176,6 +176,72 @@ class TestSessoes:
         _, lista = req(porta, "GET", "/api/sessions?period=all")
         assert lista == []
 
+    # ── entrada manual de horário (tipo Clockify) ──
+
+    def test_post_manual_cria_sessao_ja_finalizada(self, porta):
+        status, data = req(porta, "POST", "/api/sessions/manual", {
+            "category_id": None,
+            "started_at": "2026-01-01T08:00:00+00:00",
+            "ended_at":   "2026-01-01T09:30:00+00:00",
+            "note": "esqueci de iniciar o timer",
+        })
+        assert status == 201
+        assert data["fim"] is not None
+        assert data["duracao"] == 5400
+        assert data["nota"] == "esqueci de iniciar o timer"
+
+    def test_post_manual_com_categoria(self, porta):
+        _, cat = req(porta, "POST", "/api/categories", {"name": "Dir", "color": "#7c6ff7"})
+        status, data = req(porta, "POST", "/api/sessions/manual", {
+            "category_id": cat["id"],
+            "started_at": "2026-01-01T08:00:00+00:00",
+            "ended_at":   "2026-01-01T09:00:00+00:00",
+            "note": "",
+        })
+        assert status == 201
+        assert data["categoria_id"] == cat["id"]
+
+    def test_post_manual_fim_antes_do_inicio_retorna_422(self, porta):
+        status, data = req(porta, "POST", "/api/sessions/manual", {
+            "category_id": None,
+            "started_at": "2026-01-01T10:00:00+00:00",
+            "ended_at":   "2026-01-01T08:00:00+00:00",
+            "note": "",
+        })
+        assert status == 422
+        assert "error" in data
+
+    def test_post_manual_sem_started_at_retorna_400(self, porta):
+        status, data = req(porta, "POST", "/api/sessions/manual", {
+            "category_id": None,
+            "ended_at": "2026-01-01T09:00:00+00:00",
+            "note": "",
+        })
+        assert status == 400
+
+    def test_post_manual_aparece_na_listagem(self, porta):
+        req(porta, "POST", "/api/sessions/manual", {
+            "category_id": None,
+            "started_at": "2026-01-01T08:00:00+00:00",
+            "ended_at":   "2026-01-01T09:00:00+00:00",
+            "note": "",
+        })
+        status, data = req(porta, "GET", "/api/sessions?period=all")
+        assert status == 200
+        assert len(data) == 1
+
+    def test_post_manual_conta_nas_estatisticas(self, porta):
+        req(porta, "POST", "/api/sessions/manual", {
+            "category_id": None,
+            "started_at": "2026-01-01T08:00:00+00:00",
+            "ended_at":   "2026-01-01T10:00:00+00:00",
+            "note": "",
+        })
+        status, data = req(porta, "GET", "/api/stats?period=all")
+        assert status == 200
+        assert data["total_seconds"] == 7200
+        assert data["session_count"] == 1
+
 class TestStats:
 
     def test_sem_sessoes_retorna_zeros(self, porta):

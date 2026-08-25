@@ -162,6 +162,64 @@ class TestServicoSessoesValidacao:
             assert res is not None
             assert res["duration_seconds"] == 3600
 
+class TestServicoSessoesCriarManual:
+
+    def test_fim_antes_do_inicio_lanca_erro(self):
+        from servicos import ServicoSessoes
+        with pytest.raises(ValueError, match="fim deve ser posterior ao início"):
+            with patch("servicos.RepositorioSessoes"):
+                ServicoSessoes.criar_manual(
+                    None,
+                    "2026-01-01T10:00:00+00:00",
+                    "2026-01-01T08:00:00+00:00",
+                    ""
+                )
+
+    def test_fim_igual_ao_inicio_lanca_erro(self):
+        from servicos import ServicoSessoes
+        with pytest.raises(ValueError):
+            with patch("servicos.RepositorioSessoes"):
+                ServicoSessoes.criar_manual(
+                    None,
+                    "2026-01-01T10:00:00+00:00",
+                    "2026-01-01T10:00:00+00:00",
+                    ""
+                )
+
+    def test_entrada_valida_chama_repositorio(self):
+        from servicos import ServicoSessoes
+        sessao_mock = {
+            "id": 1, "duracao": 3600, "inicio": "2026-01-01T08:00:00+00:00",
+            "fim": "2026-01-01T09:00:00+00:00", "nota": "manual",
+            "categoria_nome": None, "categoria_cor": None, "categoria_id": None
+        }
+        with patch("servicos.RepositorioSessoes") as mock_repo:
+            mock_repo.criar_manual.return_value = sessao_mock
+            res = ServicoSessoes.criar_manual(
+                None,
+                "2026-01-01T08:00:00+00:00",
+                "2026-01-01T09:00:00+00:00",
+                "manual"
+            )
+            assert mock_repo.criar_manual.called
+            assert res is not None
+            assert res["duration_seconds"] == 3600
+            assert res["started_at"] == "2026-01-01T08:00:00+00:00"
+
+    def test_repassa_categoria_id_pro_repositorio(self):
+        from servicos import ServicoSessoes
+        with patch("servicos.RepositorioSessoes") as mock_repo:
+            mock_repo.criar_manual.return_value = {
+                "id": 1, "duracao": 3600, "inicio": "2026-01-01T08:00:00+00:00",
+                "fim": "2026-01-01T09:00:00+00:00", "nota": "",
+                "categoria_nome": None, "categoria_cor": None, "categoria_id": 7
+            }
+            ServicoSessoes.criar_manual(
+                7, "2026-01-01T08:00:00+00:00", "2026-01-01T09:00:00+00:00", ""
+            )
+            args = mock_repo.criar_manual.call_args[0]
+            assert args[0] == 7
+
 class TestServicoSessoesReferencia:
 
     def test_listar_repassa_referencia_pro_repositorio(self):

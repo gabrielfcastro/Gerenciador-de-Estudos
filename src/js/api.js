@@ -30,6 +30,9 @@ export const Api = {
   startSession:  (categoryId, note) => request('/sessions/start', {
     method: 'POST', ...withJson({ category_id: categoryId, note }),
   }).then(r => r.json()),
+  createManualSession: (categoryId, startedAt, endedAt, note) => request('/sessions/manual', {
+    method: 'POST', ...withJson({ category_id: categoryId, started_at: startedAt, ended_at: endedAt, note }),
+  }).then(r => r.json()),
   stopSession:   (sessionId, durationSeconds) => request('/sessions/stop', {
     method: 'POST', ...withJson({ session_id: sessionId, duration_seconds: durationSeconds }),
   }),

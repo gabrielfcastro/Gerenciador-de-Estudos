@@ -3,7 +3,7 @@ import {
   esc, fmtDuration, formatarLabels, toLocalDatetimeValue, toUTCIso,
   deslocarReferencia, rotuloPeriodoNavegavel, tooltipDuracao, fmtEixoHoras,
 } from './utils.js';
-import { buildCsel, registerCsel } from './csel.js';
+import { buildCsel, registerCsel, resetCsel } from './csel.js';
 import { getCategories, onCategoriesChange, onCategoryDeleted, refreshHours } from './categories.js';
 
 let currentPeriod = 'week';
@@ -48,6 +48,12 @@ registerCsel('edit-csel', {
   getCategories,
 });
 
+let manualSelCatId = null;
+registerCsel('manual-csel', {
+  onSelect: (id) => { manualSelCatId = id; },
+  getCategories,
+});
+
 onCategoriesChange(() => refreshHours(currentPeriod));
 onCategoryDeleted(() => loadChart());
 
@@ -56,6 +62,39 @@ export function getCurrentPeriod() { return currentPeriod; }
 export async function loadChart() {
   try { renderChart(await Api.getChart(currentPeriod, null, getReferencia())); }
   catch {}
+}
+
+// Tooltip externo do gráfico de pizza: em vez de desenhar dentro do canvas
+// (que corta na borda quando o texto não cabe no espaço do gráfico pequeno),
+// isso cria uma div HTML normal flutuando por cima, sem limite de borda.
+function pieTooltipExterno(context) {
+  const { chart, tooltip } = context;
+
+  let el = document.getElementById('pie-tooltip-externo');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'pie-tooltip-externo';
+    el.className = 'pie-tooltip-externo';
+    document.body.appendChild(el);
+  }
+
+  if (tooltip.opacity === 0) {
+    el.style.opacity = 0;
+    return;
+  }
+
+  if (tooltip.body) {
+    const dp    = tooltip.dataPoints[0];
+    const cor   = tooltip.labelColors[0].backgroundColor;
+    const nome  = dp.label;
+    const valor = tooltipDuracao(dp.parsed);
+    el.innerHTML = `<span class="pie-tooltip-dot" style="background:${cor}"></span>${esc(nome)}: ${valor}`;
+  }
+
+  const rect = chart.canvas.getBoundingClientRect();
+  el.style.opacity = 1;
+  el.style.left = (rect.left + window.scrollX + tooltip.caretX) + 'px';
+  el.style.top  = (rect.top  + window.scrollY + tooltip.caretY) + 'px';
 }
 
 function renderChart(data) {
@@ -84,7 +123,7 @@ function renderChart(data) {
       data: { labels, datasets: [{ data: values, backgroundColor: colors.map(c => c + 'cc'), borderColor: colors, borderWidth: 2 }] },
       options: {
         responsive: false,
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.label}: ${tooltipDuracao(c.parsed)}` } } },
+        plugins: { legend: { display: false }, tooltip: { enabled: false, external: pieTooltipExterno } },
         cutout: '60%',
       }
     });
@@ -298,4 +337,43 @@ export function initSessionModals() {
   document.getElementById('edit-sess-modal').addEventListener('click', function (e) {
     if (e.target === this) closeEditSess();
   });
+  document.getElementById('manual-sess-modal').addEventListener('click', function (e) {
+    if (e.target === this) closeManualSess();
+  });
+}
+
+export function openManualSess() {
+  manualSelCatId = null;
+  resetCsel('manual-csel');
+  buildCsel('manual-csel', getCategories(), null);
+
+  document.getElementById('manual-start').value = '';
+  document.getElementById('manual-end').value   = '';
+  document.getElementById('manual-note').value  = '';
+
+  document.getElementById('manual-sess-modal').classList.add('open');
+}
+
+export function closeManualSess() {
+  document.getElementById('manual-sess-modal').classList.remove('open');
+}
+
+export async function saveManualSess() {
+  const startLocal = document.getElementById('manual-start').value;
+  const endLocal   = document.getElementById('manual-end').value;
+  if (!startLocal || !endLocal) { alert('Preencha início e fim.'); return; }
+
+  const startUTC = toUTCIso(startLocal);
+  const endUTC   = toUTCIso(endLocal);
+  if (new Date(endUTC) <= new Date(startUTC)) {
+    alert('O fim deve ser depois do início.'); return;
+  }
+
+  const catId = manualSelCatId || null;
+  const note  = document.getElementById('manual-note').value.trim();
+
+  await Api.createManualSession(catId ? parseInt(catId) : null, startUTC, endUTC, note);
+
+  closeManualSess();
+  await refreshAll();
 }

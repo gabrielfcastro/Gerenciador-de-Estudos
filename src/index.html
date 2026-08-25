@@ -89,6 +89,8 @@
         <button class="btn btn-pause"   id="btn-pause"  onclick="togglePause()" disabled>⏸ Pausar</button>
         <button class="btn btn-danger"  id="btn-stop"   onclick="askStop()" disabled>■ Parar</button>
       </div>
+
+      <button class="btn-manual-entry" onclick="openManualSess()">🕐 Adicionar registro manual</button>
     </div>
 
     <div class="stats-row">
@@ -206,6 +208,23 @@
   </div>
 </div>
 
+<div class="overlay" id="view-task-modal">
+  <div class="modal view-task-modal">
+    <div class="view-task-head">
+      <h3 id="view-task-title">Tarefa</h3>
+      <div class="view-task-cat" id="view-task-cat"></div>
+    </div>
+    <div class="view-task-note-wrap">
+      <label>Nota</label>
+      <div class="view-task-note" id="view-task-note"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeViewTask()">Fechar</button>
+      <button class="btn btn-primary" onclick="editFromView()">✏ Editar</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="add-task-modal">
   <div class="modal">
     <h3 id="task-modal-title">Nova tarefa</h3>
@@ -307,12 +326,48 @@
   </div>
 </div>
 
+<div class="overlay" id="manual-sess-modal">
+  <div class="modal edit-modal" style="gap:22px;padding:32px">
+    <h3>Adicionar registro manual</h3>
+    <div class="form-group">
+      <label>Matéria</label>
+      <div class="csel" id="manual-csel">
+        <button class="csel-trigger" onclick="toggleCsel('manual-csel')">
+          <span class="csel-dot" id="manual-csel-dot" style="display:none"></span>
+          <span class="csel-text placeholder" id="manual-csel-text">— Escolha uma categoria —</span>
+          <span class="csel-arrow">▼</span>
+        </button>
+        <div class="csel-menu" id="manual-csel-menu"></div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Início</label>
+        <input type="datetime-local" id="manual-start" step="60"/>
+      </div>
+      <div class="form-group">
+        <label>Fim</label>
+        <input type="datetime-local" id="manual-end" step="60"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Nota (opcional)</label>
+      <input type="text" id="manual-note" placeholder="Ex: Exercícios de OAC..." maxlength="200"/>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeManualSess()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveManualSess()">Adicionar</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="confirm-modal">
   <div class="modal confirm-modal">
     <h3>Encerrar sessão?</h3>
-    <p>O tempo registrado até agora será salvo.</p>
+    <p>Você pode salvar o tempo registrado, ou descartar essa sessão sem guardá-la.</p>
     <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeConfirm()">Continuar estudando</button>
+      <button class="btn btn-ghost"  onclick="closeConfirm()">Continuar estudando</button>
+      <button class="btn btn-danger-solid" onclick="discardStop()">Descartar</button>
       <button class="btn btn-danger" onclick="confirmStop()">Encerrar</button>
     </div>
   </div>

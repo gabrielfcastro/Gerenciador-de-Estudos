@@ -5,17 +5,19 @@ import {
 } from './categories.js';
 import {
   loadSettings, openSettings, closeSettings, saveSettings,
-  startTimer, togglePause, askStop, closeConfirm, confirmStop, dismissAlarm,
+  startTimer, togglePause, askStop, closeConfirm, confirmStop, discardStop, dismissAlarm,
   initTimerModals,
 } from './timer.js';
 import {
   loadChart, loadStats, loadSessions, setPeriod, toggleGroup, deleteSess,
   openEditSess, closeEditSess, saveEditSess, initSessionModals,
   prevPeriod, nextPeriod,
+  openManualSess, closeManualSess, saveManualSess,
 } from './sessions.js';
 import {
   loadTasks, onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop,
   undoComplete, deleteTask, openAddTask, openEditTask, closeAddTask, saveTask, initTaskModals,
+  openTaskView, closeViewTask, editFromView,
 } from './tasks.js';
 import {
   loadCronograma, openAddSchedule, closeAddSchedule, saveScheduleEntry, removeScheduleEntry,
@@ -64,11 +66,13 @@ Object.assign(window, {
   toggleCsel, pickCsel,
   openCatModal, closeCatModal, saveCategory, deleteCat, pickColor,
   openSettings, closeSettings, saveSettings,
-  startTimer, togglePause, askStop, closeConfirm, confirmStop, dismissAlarm,
+  startTimer, togglePause, askStop, closeConfirm, confirmStop, discardStop, dismissAlarm,
   setPeriod, toggleGroup, deleteSess, openEditSess, closeEditSess, saveEditSess,
   prevPeriod, nextPeriod,
+  openManualSess, closeManualSess, saveManualSess,
   onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop,
   undoComplete, deleteTask, openAddTask, openEditTask, closeAddTask, saveTask,
+  openTaskView, closeViewTask, editFromView,
   openAddSchedule, closeAddSchedule, saveScheduleEntry, removeScheduleEntry,
   onCatChipDragStart, onCatChipDragEnd, onEntryDragStart, onEntryDragEnd,
   onDiaDragOver, onDiaDragLeave, onDiaDrop,

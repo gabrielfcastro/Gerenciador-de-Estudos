@@ -221,6 +221,18 @@ class RepositorioSessoes:
             conn.execute("DELETE FROM sessions WHERE id=?", (sid,))
             conn.commit()
             return {"ok": True}
+
+    @staticmethod
+    def criar_manual(categoria_id, inicio_iso, fim_iso, nota, funcao_calcular_duracao):
+        duracao = funcao_calcular_duracao(inicio_iso, fim_iso)
+        with get_db() as conn:
+            cur = conn.execute(
+                "INSERT INTO sessions (categoria_id, inicio, fim, duracao, nota) VALUES (?,?,?,?,?)",
+                (categoria_id, inicio_iso, fim_iso, duracao, nota)
+            )
+            conn.commit()
+            row = conn.execute("SELECT * FROM sessions WHERE id=?", (cur.lastrowid,)).fetchone()
+            return dict(row)
 class RepositorioTarefas:
     @staticmethod
     def listar():

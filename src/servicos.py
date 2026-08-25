@@ -108,6 +108,15 @@ class ServicoSessoes:
     def deletar(sessao_id) -> dict:
         return RepositorioSessoes.deletar(sessao_id)
 
+    @staticmethod
+    def criar_manual(categoria_id, started_at: str, ended_at: str, nota: str) -> dict:
+        t1 = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+        t2 = datetime.fromisoformat(ended_at.replace("Z", "+00:00"))
+        if t2 <= t1:
+            raise ValueError("fim deve ser posterior ao início")
+        res = RepositorioSessoes.criar_manual(categoria_id, started_at, ended_at, nota, calcular_duracao)
+        return ServicoSessoes._mapear(res)
+
 class ServicoTarefas:
 
     @staticmethod

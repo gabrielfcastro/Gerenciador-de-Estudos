@@ -202,6 +202,43 @@ class TestSessoes:
         assert "period_key" in dados[0]
         assert "total_seconds" in dados[0]
 
+    # ── criar_manual (entrada manual de horário, tipo Clockify) ──
+
+    def test_criar_manual_cria_sessao_ja_finalizada(self):
+        from repositorio import RepositorioSessoes
+        inicio = "2026-01-01T08:00:00+00:00"
+        fim    = "2026-01-01T09:00:00+00:00"
+        s = RepositorioSessoes.criar_manual(None, inicio, fim, "nota manual", calc_duracao)
+        assert s["id"] is not None
+        assert s["fim"] is not None
+        assert s["duracao"] == 3600
+        assert s["nota"] == "nota manual"
+
+    def test_criar_manual_com_categoria(self):
+        from repositorio import RepositorioSessoes, RepositorioCategorias
+        cat = RepositorioCategorias.criar("Dir", "#7c6ff7")
+        s = RepositorioSessoes.criar_manual(
+            cat["id"], "2026-01-01T08:00:00+00:00", "2026-01-01T09:00:00+00:00", "", calc_duracao
+        )
+        assert s["categoria_id"] == cat["id"]
+
+    def test_criar_manual_aparece_na_listagem_imediatamente(self):
+        from repositorio import RepositorioSessoes
+        RepositorioSessoes.criar_manual(
+            None, "2026-01-01T08:00:00+00:00", "2026-01-01T09:00:00+00:00", "", calc_duracao
+        )
+        resultado = RepositorioSessoes.obter_filtradas("all", None)
+        assert len(resultado) == 1
+
+    def test_criar_manual_conta_nas_estatisticas(self):
+        from repositorio import RepositorioSessoes
+        RepositorioSessoes.criar_manual(
+            None, "2026-01-01T08:00:00+00:00", "2026-01-01T10:00:00+00:00", "", calc_duracao
+        )
+        stats = RepositorioSessoes.obter_estatisticas("all")
+        assert stats["total_sessoes"] == 1
+        assert stats["total_segundos"] == 7200
+
     # ── novos: navegação por período (referencia) ──
 
     def _sessao_em(self, inicio_iso, fim_iso, cat_id=None):

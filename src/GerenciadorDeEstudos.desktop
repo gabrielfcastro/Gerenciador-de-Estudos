@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Gerenciador de Estudos
+Comment=Abre o app de estudos no navegador
+Exec="/home/gabrielfcastro/Projeto - Gerenciador de Tempo/src/iniciar_app.sh"
+Terminal=true
+Icon=/home/gabrielfcastro/Projeto - Gerenciador de Tempo/src/icone-app.png
+Categories=Utility;

@@ -87,6 +87,9 @@ def _criar_roteador():
     r.add("POST",   "/api/sessions/start",
           lambda qs, body: ServicoSessoes.iniciar(
               body.get("category_id"), body.get("note", "")), status=201)
+    r.add("POST",   "/api/sessions/manual",
+          lambda qs, body: ServicoSessoes.criar_manual(
+              body.get("category_id"), body["started_at"], body["ended_at"], body.get("note", "")), status=201)
     r.add("POST",   "/api/sessions/stop",
           lambda qs, body: ServicoSessoes.parar(
               body["session_id"], body.get("duration_seconds")))

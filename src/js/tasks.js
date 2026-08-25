@@ -47,19 +47,51 @@ function renderTasks() {
     const nota = t.nota || t.note || '';
     const notaHtml = nota ? `<div class="kanban-card-note">${esc(nota)}</div>` : '';
     return `<div class="kanban-card" draggable="true" data-id="${t.id}"
+      onclick="openTaskView(${t.id})"
       ondragstart="onDragStart(event,${t.id})"
       ondragend="onDragEnd(event)">
       <div class="kanban-card-top">
         <div class="kanban-card-title">${esc(t.titulo)}</div>
         <div class="kanban-card-acts">
-          <button class="kanban-card-edit" onclick="openEditTask(${t.id})" title="Editar">✏</button>
-          <button class="kanban-card-del" onclick="deleteTask(${t.id})" title="Remover">✕</button>
+          <button class="kanban-card-edit" onclick="event.stopPropagation(); openEditTask(${t.id})" title="Editar">✏</button>
+          <button class="kanban-card-del" onclick="event.stopPropagation(); deleteTask(${t.id})" title="Remover">✕</button>
         </div>
       </div>
       ${catHtml}
       ${notaHtml}
     </div>`;
   }).join('');
+}
+
+let viewTaskId = null;
+
+export function openTaskView(id) {
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
+  viewTaskId = id;
+
+  document.getElementById('view-task-title').textContent = task.titulo;
+
+  const cat = task.categoria_id ? getCategories().find(c => String(c.id) === String(task.categoria_id)) : null;
+  const catEl = document.getElementById('view-task-cat');
+  catEl.innerHTML = cat
+    ? `<div class="dot" style="background:${cat.color}"></div>${esc(cat.name)}`
+    : '';
+
+  document.getElementById('view-task-note').textContent = task.nota || task.note || '';
+
+  document.getElementById('view-task-modal').classList.add('open');
+}
+
+export function closeViewTask() {
+  document.getElementById('view-task-modal').classList.remove('open');
+  viewTaskId = null;
+}
+
+export function editFromView() {
+  const id = viewTaskId;
+  closeViewTask();
+  openEditTask(id);
 }
 
 export function onDragStart(event, id) {
@@ -194,4 +226,5 @@ export async function saveTask() {
 export function initTaskModals() {
   document.getElementById('add-task-modal').addEventListener('click', function (e) { if (e.target === this) closeAddTask(); });
   document.getElementById('inp-task-title').addEventListener('keydown', e => { if (e.key === 'Enter') saveTask(); });
+  document.getElementById('view-task-modal').addEventListener('click', function (e) { if (e.target === this) closeViewTask(); });
 }

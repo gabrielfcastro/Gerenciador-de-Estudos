@@ -64,3 +64,24 @@ test('getSessions: inclui referencia na query string quando fornecida', async ()
   await Api.getSessions('today', null, '2026-07-10');
   assert.equal(chamadas[0].url, 'http://localhost:8000/api/sessions?period=today&referencia=2026-07-10');
 });
+
+test('createManualSession: envia category_id, started_at, ended_at e note no corpo', async () => {
+  await Api.createManualSession(7, '2026-01-01T08:00:00.000Z', '2026-01-01T09:00:00.000Z', 'esqueci o timer');
+
+  assert.equal(chamadas.length, 1);
+  const { url, options } = chamadas[0];
+  assert.equal(url, 'http://localhost:8000/api/sessions/manual');
+  assert.equal(options.method, 'POST');
+  assert.deepEqual(JSON.parse(options.body), {
+    category_id: 7,
+    started_at: '2026-01-01T08:00:00.000Z',
+    ended_at:   '2026-01-01T09:00:00.000Z',
+    note: 'esqueci o timer',
+  });
+});
+
+test('createManualSession: categoria nula ainda assim é enviada', async () => {
+  await Api.createManualSession(null, '2026-01-01T08:00:00.000Z', '2026-01-01T09:00:00.000Z', '');
+  const { options } = chamadas[0];
+  assert.equal(JSON.parse(options.body).category_id, null);
+});

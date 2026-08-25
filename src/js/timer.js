@@ -158,6 +158,10 @@ export async function confirmStop() {
   closeConfirm();
   await stopTimer();
 }
+export async function discardStop() {
+  closeConfirm();
+  await discardTimer();
+}
 
 async function stopTimer() {
   clearInterval(timerInterval);
@@ -166,6 +170,22 @@ async function stopTimer() {
   activeSession = null;
   isPaused      = false;
 
+  resetTimerUI();
+  await refreshSessions();
+}
+
+async function discardTimer() {
+  clearInterval(timerInterval);
+  if (!activeSession) return;
+  await Api.deleteSession(activeSession.id);
+  activeSession = null;
+  isPaused      = false;
+
+  resetTimerUI();
+  await refreshSessions();
+}
+
+function resetTimerUI() {
   document.getElementById('clock').textContent    = '00:00:00';
   document.getElementById('clock').style.color    = '';
   document.getElementById('clock').classList.remove('paused');
@@ -186,8 +206,6 @@ async function stopTimer() {
   document.querySelector('#cat-csel .csel-trigger').disabled = false;
   document.getElementById('inp-note').value     = '';
   document.title = 'Gerenciador·de·Estudos';
-
-  await refreshSessions();
 }
 
 function fireAlarm() {
