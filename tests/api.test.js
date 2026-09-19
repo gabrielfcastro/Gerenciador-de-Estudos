@@ -7,9 +7,16 @@ globalThis.fetch = async (url, options) => {
   return { ok: true, json: async () => ({}) };
 };
 
+const beaconChamadas = [];
+Object.defineProperty(globalThis, 'navigator', {
+  value: { sendBeacon: (url, blob) => { beaconChamadas.push({ url, blob }); return true; } },
+  writable: true,
+  configurable: true,
+});
+
 const { Api } = await import('../src/js/api.js');
 
-test.beforeEach(() => { chamadas.length = 0; });
+test.beforeEach(() => { chamadas.length = 0; beaconChamadas.length = 0; });
 
 test('createTask: envia titulo, categoria_id e nota no corpo da requisição', async () => {
   await Api.createTask('Ler capítulo 3', 7, 'Focar nos artigos 5 a 12');
@@ -84,4 +91,20 @@ test('createManualSession: categoria nula ainda assim é enviada', async () => {
   await Api.createManualSession(null, '2026-01-01T08:00:00.000Z', '2026-01-01T09:00:00.000Z', '');
   const { options } = chamadas[0];
   assert.equal(JSON.parse(options.body).category_id, null);
+});
+
+test('stopSessionBeacon: usa sendBeacon (não fetch) apontando pra /sessions/stop', async () => {
+  Api.stopSessionBeacon(42, 1800);
+
+  assert.equal(chamadas.length, 0, 'não deveria ter usado fetch');
+  assert.equal(beaconChamadas.length, 1);
+  assert.equal(beaconChamadas[0].url, 'http://localhost:8000/api/sessions/stop');
+});
+
+test('stopSessionBeacon: envia session_id e duration_seconds no corpo', async () => {
+  Api.stopSessionBeacon(42, 1800);
+
+  const blob = beaconChamadas[0].blob;
+  const texto = await blob.text();
+  assert.deepEqual(JSON.parse(texto), { session_id: 42, duration_seconds: 1800 });
 });

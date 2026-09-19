@@ -409,32 +409,48 @@ header{
 }
 .csel-trigger:hover:not(:disabled){border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,111,247,.12)}
 .csel-trigger:disabled{opacity:.45;cursor:not-allowed}
-.csel-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.csel-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;box-shadow:0 0 6px currentColor}
 .csel-text{flex:1;color:inherit}
 .csel-text.placeholder{color:var(--text3)}
 .csel-arrow{color:var(--text3);font-size:.7rem;transition:transform .2s;flex-shrink:0;line-height:1}
 .csel.open .csel-arrow{transform:rotate(180deg)}
 
 .csel-menu{
-  display:none;position:absolute;top:calc(100% + 6px);
+  position:absolute;top:calc(100% + 8px);
   left:0;right:0;z-index:150;
   background:var(--surface);border:1px solid var(--border);
-  border-radius:13px;padding:5px;
-  box-shadow:0 10px 32px rgba(80,90,130,.22);
-  max-height:220px;overflow-y:auto;
+  border-radius:16px;padding:12px;
+  box-shadow:0 14px 36px rgba(60,66,110,.24);
+  max-height:240px;overflow-y:auto;
+  opacity:0;transform:translateY(-6px) scale(.98);
+  pointer-events:none;visibility:hidden;
+  transition:opacity .16s cubic-bezier(.2,.9,.3,1),transform .16s cubic-bezier(.2,.9,.3,1),visibility 0s .16s;
+  display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start;
 }
-.csel.open .csel-menu{display:block}
+.csel.open .csel-menu{
+  opacity:1;transform:translateY(0) scale(1);
+  pointer-events:all;visibility:visible;
+  transition:opacity .16s cubic-bezier(.2,.9,.3,1),transform .16s cubic-bezier(.2,.9,.3,1);
+}
 
 .csel-option{
-  display:flex;align-items:center;gap:9px;
-  padding:9px 11px;border-radius:9px;
-  cursor:pointer;font-size:.87rem;font-weight:500;
-  color:var(--text);transition:background .12s;
+  display:inline-flex;align-items:center;gap:8px;
+  padding:9px 14px;border-radius:99px;
+  cursor:pointer;font-size:.83rem;font-weight:600;
+  color:var(--text2);background:var(--surface2);
+  border:1.5px solid transparent;
+  transition:all .12s;
 }
-.csel-option:hover{background:var(--surface2)}
-.csel-option.active{background:rgba(124,111,247,.13);color:var(--accent)}
-.csel-option-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
-.csel-none{padding:9px 11px;border-radius:9px;font-size:.87rem;color:var(--text3);cursor:pointer;transition:background .12s}
+.csel-option:hover{background:var(--surface3);color:var(--text)}
+.csel-option.active{background:rgba(124,111,247,.14);color:var(--accent);border-color:rgba(124,111,247,.4)}
+.csel-option.active::after{content:'✓';font-size:.72rem;font-weight:700}
+.csel-option-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;box-shadow:0 0 6px currentColor}
+.csel-none{
+  width:100%;
+  padding:9px 12px;font-size:.85rem;color:var(--text3);
+  cursor:pointer;transition:background .12s;margin-bottom:2px;
+  border-bottom:1px solid var(--border);border-radius:9px 9px 0 0;
+}
 .csel-none:hover{background:var(--surface2)}
 .csel-none.active{background:rgba(124,111,247,.08)}
 
@@ -495,10 +511,22 @@ header{
 .kanban-add:hover{border-color:var(--accent);color:var(--accent);background:rgba(124,111,247,.04)}
 
 /* ── undo banner ── */
-.undo-banner{display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:linear-gradient(160deg,var(--surface) 0%,#c8ccd8 100%);border:1px solid var(--border2);border-radius:var(--r);padding:13px 20px;align-items:center;gap:14px;font-size:.87rem;font-weight:600;color:var(--text);box-shadow:0 8px 28px rgba(80,90,130,.22);z-index:400;white-space:nowrap;overflow:hidden}
-.undo-banner.show{display:flex}
-.undo-banner .undo-btn{background:var(--accent-g);border:none;color:#fff;padding:5px 14px;border-radius:6px;cursor:pointer;font-weight:700;font-size:.8rem;font-family:inherit}
-.undo-progress{position:absolute;bottom:0;left:0;height:3px;background:var(--accent-g);border-radius:0 0 var(--r) var(--r);width:100%}
+/* Card "concluindo": a barrinha no topo mostra quanto tempo falta pra
+   poder clicar em desfazer, antes da tarefa ser apagada de verdade. */
+.kanban-card.completing{position:relative;overflow:hidden;cursor:default;opacity:.94}
+.kanban-card.completing:hover{transform:none;box-shadow:var(--shadow-sm)}
+.kanban-card-progress{
+  position:absolute;top:0;left:0;height:3px;width:100%;
+  background:var(--accent-g);
+  animation-name:kanban-desfazer-shrink;animation-timing-function:linear;animation-fill-mode:forwards;
+}
+@keyframes kanban-desfazer-shrink{from{width:100%}to{width:0%}}
+.kanban-undo-btn{
+  margin-top:9px;background:var(--surface3);border:1px solid var(--border2);color:var(--text2);
+  font-size:.72rem;font-weight:700;padding:5px 11px;border-radius:7px;
+  cursor:pointer;font-family:inherit;transition:all .15s;
+}
+.kanban-undo-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
 /* ── cronograma ── */
 .cronograma-wrap{padding:28px;display:flex;flex-direction:column;gap:20px;flex:1;overflow-y:auto}
 .cronograma-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:12px}

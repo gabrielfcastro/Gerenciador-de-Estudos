@@ -6,11 +6,15 @@ import { buildCsel, registerCsel, resetCsel } from './csel.js';
 import { getCategories } from './categories.js';
 
 let tasks           = [];
-let draggedId       = null;
-let undoTimer       = null;
-let pendingDeleteId = null;
+let draggedId        = null;
 let taskSelCatId    = null;
 let editTaskId      = null;
+
+// Tarefas que foram arrastadas pra "Concluído" mas ainda estão na janela de
+// desfazer (a barrinha de contagem regressiva fica em cima do próprio card).
+// Map<id, { task, timeoutId, deleteTimeoutId }>
+const completando = new Map();
+const DURACAO_DESFAZER_MS = 4000;
 
 registerCsel('task-csel', {
   onSelect: (id) => { taskSelCatId = id; },
@@ -25,40 +29,79 @@ export async function loadTasks() {
 }
 
 function renderTasks() {
-  const todoEl   = document.getElementById('todo-cards');
-  const countEl  = document.getElementById('todo-count');
-  const doneHint = document.getElementById('done-hint');
-  countEl.textContent  = tasks.length;
-  document.getElementById('done-count').textContent = '0';
-  if (doneHint) doneHint.style.display = 'block';
+  const todoEl  = document.getElementById('todo-cards');
+  const countEl = document.getElementById('todo-count');
+  countEl.textContent = tasks.length;
 
   if (!tasks.length) {
     todoEl.innerHTML = '<div style="color:var(--text3);font-size:.82rem;text-align:center;padding:32px 16px">Nenhuma tarefa ainda</div>';
+  } else {
+    todoEl.innerHTML = tasks.map(t => cardHtml(t)).join('');
+  }
+
+  renderDoneColumn();
+}
+
+// Estilo do card na cor da matéria: barra lateral sólida + fundo levemente
+// tingido, na mesma cor da bolinha da categoria.
+function corDoCard(categoriaId) {
+  const cat = categoriaId ? getCategories().find(c => String(c.id) === String(categoriaId)) : null;
+  if (!cat) return { cat: null, style: '' };
+  return {
+    cat,
+    style: `border-left:4px solid ${cat.color};background:linear-gradient(155deg, ${cat.color}22, var(--surface) 60%)`,
+  };
+}
+
+function cardHtml(t) {
+  const { cat, style } = corDoCard(t.categoria_id);
+  const catHtml = cat
+    ? `<div class="kanban-card-cat">
+         <div class="kanban-card-cat-dot" style="background:${cat.color}"></div>
+         ${esc(cat.name)}
+       </div>` : '';
+  const nota = t.nota || t.note || '';
+  const notaHtml = nota ? `<div class="kanban-card-note">${esc(nota)}</div>` : '';
+  return `<div class="kanban-card" draggable="true" data-id="${t.id}" style="${style}"
+    onclick="openTaskView(${t.id})"
+    ondragstart="onDragStart(event,${t.id})"
+    ondragend="onDragEnd(event)">
+    <div class="kanban-card-top">
+      <div class="kanban-card-title">${esc(t.titulo)}</div>
+      <div class="kanban-card-acts">
+        <button class="kanban-card-edit" onclick="event.stopPropagation(); openEditTask(${t.id})" title="Editar">✏</button>
+        <button class="kanban-card-del" onclick="event.stopPropagation(); deleteTask(${t.id})" title="Remover">✕</button>
+      </div>
+    </div>
+    ${catHtml}
+    ${notaHtml}
+  </div>`;
+}
+
+function renderDoneColumn() {
+  const doneEl  = document.getElementById('done-cards');
+  const countEl = document.getElementById('done-count');
+  countEl.textContent = completando.size;
+
+  if (!completando.size) {
+    doneEl.innerHTML = '<div class="kanban-done-hint" id="done-hint">Arraste aqui para concluir</div>';
     return;
   }
 
-  todoEl.innerHTML = tasks.map(t => {
-    const cat = t.categoria_id ? getCategories().find(c => String(c.id) === String(t.categoria_id)) : null;
+  doneEl.innerHTML = [...completando.values()].map(({ task }) => {
+    const { cat, style } = corDoCard(task.categoria_id);
     const catHtml = cat
       ? `<div class="kanban-card-cat">
            <div class="kanban-card-cat-dot" style="background:${cat.color}"></div>
            ${esc(cat.name)}
          </div>` : '';
-    const nota = t.nota || t.note || '';
-    const notaHtml = nota ? `<div class="kanban-card-note">${esc(nota)}</div>` : '';
-    return `<div class="kanban-card" draggable="true" data-id="${t.id}"
-      onclick="openTaskView(${t.id})"
-      ondragstart="onDragStart(event,${t.id})"
-      ondragend="onDragEnd(event)">
+    return `<div class="kanban-card completing" data-id="${task.id}" style="${style}">
+      <div class="kanban-card-progress" style="animation-duration:${DURACAO_DESFAZER_MS}ms"></div>
       <div class="kanban-card-top">
-        <div class="kanban-card-title">${esc(t.titulo)}</div>
-        <div class="kanban-card-acts">
-          <button class="kanban-card-edit" onclick="event.stopPropagation(); openEditTask(${t.id})" title="Editar">✏</button>
-          <button class="kanban-card-del" onclick="event.stopPropagation(); deleteTask(${t.id})" title="Remover">✕</button>
-        </div>
+        <div class="kanban-card-title">${esc(task.titulo)}</div>
       </div>
       ${catHtml}
-      ${notaHtml}
+      <button class="kanban-undo-btn" onclick="undoComplete(${task.id})">↺ Desfazer</button>
     </div>`;
   }).join('');
 }
@@ -119,41 +162,31 @@ export function onDrop(event, col) {
 function completeTask(taskId) {
   const task = tasks.find(t => t.id === taskId);
   if (!task) return;
+
   tasks = tasks.filter(t => t.id !== taskId);
+
+  const timeoutId = setTimeout(() => finalizarConclusao(taskId), DURACAO_DESFAZER_MS);
+  completando.set(taskId, { task, timeoutId });
+
   renderTasks();
-
-  if (undoTimer) { clearTimeout(undoTimer); deleteNow(pendingDeleteId); }
-  pendingDeleteId = taskId;
-
-  document.getElementById('undo-text').textContent = `"${task.titulo}" concluída`;
-  document.getElementById('undo-banner').classList.add('show');
-
-  const prog = document.getElementById('undo-progress');
-  prog.style.transition = 'none';
-  prog.style.width = '100%';
-  requestAnimationFrame(() => {
-    prog.style.transition = 'width 4s linear';
-    prog.style.width = '0%';
-  });
-
-  undoTimer = setTimeout(() => {
-    deleteNow(pendingDeleteId);
-    pendingDeleteId = null;
-    document.getElementById('undo-banner').classList.remove('show');
-  }, 4000);
 }
 
-async function deleteNow(id) {
-  if (!id) return;
-  await Api.deleteTask(id);
+async function finalizarConclusao(taskId) {
+  const entry = completando.get(taskId);
+  if (!entry) return;
+  completando.delete(taskId);
+  renderDoneColumn();
+  await Api.deleteTask(taskId);
 }
 
-export function undoComplete() {
-  clearTimeout(undoTimer);
-  undoTimer = null;
-  document.getElementById('undo-banner').classList.remove('show');
-  pendingDeleteId = null;
-  loadTasks();
+export function undoComplete(taskId) {
+  const entry = completando.get(taskId);
+  if (!entry) return;
+  clearTimeout(entry.timeoutId);
+  completando.delete(taskId);
+
+  tasks.push(entry.task);
+  renderTasks();
 }
 
 export async function deleteTask(id) {

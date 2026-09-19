@@ -20,6 +20,14 @@ registerCsel('cat-csel', {
   getCategories,
 });
 
+// ── Trava de segurança: salva a sessão automaticamente se a aba/navegador
+// for fechado com o timer rodando. Sem isso, a sessão fica "aberta" no banco
+// pra sempre (sem fim/duração), e não conta em lugar nenhum.
+window.addEventListener('beforeunload', () => {
+  if (!activeSession) return;
+  Api.stopSessionBeacon(activeSession.id, elapsedSecs());
+});
+
 // Mantém o dropdown de matéria do timer sincronizado sempre que a lista muda.
 onCategoriesChange((categories) => buildCsel('cat-csel', categories, selCatId));
 

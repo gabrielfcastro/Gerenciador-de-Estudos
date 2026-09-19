@@ -175,13 +175,6 @@
   </div>
 </div>
 
-<!-- undo banner -->
-<div class="undo-banner" id="undo-banner">
-  <span id="undo-text">Tarefa concluída</span>
-  <button class="undo-btn" onclick="undoComplete()">Desfazer</button>
-  <div class="undo-progress" id="undo-progress"></div>
-</div>
-
 <div class="alarm" id="alarm">
   ⏰ Tempo de bloco encerrado!
   <button onclick="dismissAlarm()">OK</button>
@@ -352,7 +345,7 @@
     </div>
     <div class="form-group">
       <label>Nota (opcional)</label>
-      <input type="text" id="manual-note" placeholder="Ex: Exercícios de OAC..." maxlength="200"/>
+      <input type="text" id="manual-note" placeholder="Ex: Esqueci de iniciar o timer…" maxlength="200"/>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeManualSess()">Cancelar</button>
@@ -368,7 +361,7 @@
     <div class="modal-actions">
       <button class="btn btn-ghost"  onclick="closeConfirm()">Continuar estudando</button>
       <button class="btn btn-danger-solid" onclick="discardStop()">Descartar</button>
-      <button class="btn btn-danger" onclick="confirmStop()">Encerrar</button>
+      <button class="btn btn-primary" onclick="confirmStop()">Encerrar</button>
     </div>
   </div>
 </div>

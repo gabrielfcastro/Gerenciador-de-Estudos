@@ -36,6 +36,13 @@ export const Api = {
   stopSession:   (sessionId, durationSeconds) => request('/sessions/stop', {
     method: 'POST', ...withJson({ session_id: sessionId, duration_seconds: durationSeconds }),
   }),
+  stopSessionBeacon: (sessionId, durationSeconds) => {
+    const blob = new Blob(
+      [JSON.stringify({ session_id: sessionId, duration_seconds: durationSeconds })],
+      { type: 'application/json' }
+    );
+    return navigator.sendBeacon(`${API_BASE}/sessions/stop`, blob);
+  },
   updateSession: (id, payload) => request(`/sessions/${id}`, { method: 'PUT', ...withJson(payload) }),
   deleteSession: (id) => request(`/sessions/${id}`, { method: 'DELETE' }),
   getChart:      (period, categoriaId, referencia) => request(
