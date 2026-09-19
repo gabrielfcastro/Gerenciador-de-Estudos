@@ -344,6 +344,54 @@ class TestServicoTarefas:
             res = ServicoTarefas.atualizar(9999, "X", 1, "")
             assert res is None
 
+    # ── completar / reabrir ──
+
+    def test_completar_chama_repositorio_com_timestamp(self):
+        from servicos import ServicoTarefas
+        with patch("servicos.RepositorioTarefas") as mock_repo:
+            mock_repo.completar.return_value = {
+                "id": 1, "titulo": "X", "categoria_id": None, "nota": "",
+                "status": "done", "concluida_em": "2026-01-01T10:00:00+00:00",
+                "categoria_nome": None, "categoria_cor": None,
+            }
+            res = ServicoTarefas.completar(1)
+            assert mock_repo.completar.called
+            args = mock_repo.completar.call_args[0]
+            assert args[0] == 1
+            assert isinstance(args[1], str)  # timestamp ISO gerado pelo serviço
+            assert res["status"] == "done"
+
+    def test_completar_tarefa_inexistente_retorna_none(self):
+        from servicos import ServicoTarefas
+        with patch("servicos.RepositorioTarefas") as mock_repo:
+            mock_repo.completar.return_value = None
+            res = ServicoTarefas.completar(9999)
+            assert res is None
+
+    def test_reabrir_chama_repositorio(self):
+        from servicos import ServicoTarefas
+        with patch("servicos.RepositorioTarefas") as mock_repo:
+            mock_repo.reabrir.return_value = {
+                "id": 1, "titulo": "X", "categoria_id": None, "nota": "",
+                "status": "todo", "concluida_em": None,
+                "categoria_nome": None, "categoria_cor": None,
+            }
+            res = ServicoTarefas.reabrir(1)
+            mock_repo.reabrir.assert_called_once_with(1)
+            assert res["status"] == "todo"
+
+    def test_listar_concluidas_mapeia_categoria(self):
+        from servicos import ServicoTarefas
+        with patch("servicos.RepositorioTarefas") as mock_repo:
+            mock_repo.listar_concluidas.return_value = [{
+                "id": 1, "titulo": "X", "categoria_id": 7, "nota": "",
+                "status": "done", "concluida_em": "2026-01-01T10:00:00+00:00",
+                "categoria_nome": "Dir", "categoria_cor": "#7c6ff7",
+            }]
+            res = ServicoTarefas.listar_concluidas()
+            assert len(res) == 1
+            assert res[0]["category_name"] == "Dir"
+
 class TestServicoCronograma:
 
     def test_mover_com_dia_valido_chama_repositorio(self):

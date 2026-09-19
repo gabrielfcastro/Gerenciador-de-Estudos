@@ -59,6 +59,12 @@ def init_db():
         if "nota" not in colunas:
             conn.execute("ALTER TABLE tasks ADD COLUMN nota TEXT DEFAULT ''")
             conn.commit()
+
+        # migração: bancos criados antes da coluna `concluida_em` existir em tasks
+        colunas = [r["name"] for r in conn.execute("PRAGMA table_info(tasks)").fetchall()]
+        if "concluida_em" not in colunas:
+            conn.execute("ALTER TABLE tasks ADD COLUMN concluida_em TEXT DEFAULT NULL")
+            conn.commit()
     finally:
         conn.close()
 

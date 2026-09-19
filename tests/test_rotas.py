@@ -390,6 +390,48 @@ class TestTarefas:
         })
         assert status == 404
 
+    # ── completar / reabrir (não apaga mais) ──
+
+    def test_post_complete_marca_como_done_e_some_da_lista_padrao(self, porta):
+        _, cat = req(porta, "POST", "/api/categories", {"name": "Dir", "color": "#7c6ff7"})
+        _, t = req(porta, "POST", "/api/tasks", {"titulo": "Estudar", "categoria_id": cat["id"]})
+        status, data = req(porta, "POST", "/api/tasks/complete", {"id": t["id"]})
+        assert status == 200
+        assert data["status"] == "done"
+
+        _, lista = req(porta, "GET", "/api/tasks")
+        assert lista == []
+
+    def test_get_tasks_done_lista_as_concluidas(self, porta):
+        _, cat = req(porta, "POST", "/api/categories", {"name": "Dir", "color": "#7c6ff7"})
+        _, t = req(porta, "POST", "/api/tasks", {"titulo": "Estudar", "categoria_id": cat["id"]})
+        req(porta, "POST", "/api/tasks/complete", {"id": t["id"]})
+
+        status, data = req(porta, "GET", "/api/tasks/done")
+        assert status == 200
+        assert len(data) == 1
+        assert data[0]["id"] == t["id"]
+
+    def test_post_reopen_volta_pra_lista_padrao(self, porta):
+        _, cat = req(porta, "POST", "/api/categories", {"name": "Dir", "color": "#7c6ff7"})
+        _, t = req(porta, "POST", "/api/tasks", {"titulo": "Estudar", "categoria_id": cat["id"]})
+        req(porta, "POST", "/api/tasks/complete", {"id": t["id"]})
+
+        status, data = req(porta, "POST", "/api/tasks/reopen", {"id": t["id"]})
+        assert status == 200
+        assert data["status"] == "todo"
+
+        _, lista = req(porta, "GET", "/api/tasks")
+        assert len(lista) == 1
+        assert lista[0]["id"] == t["id"]
+
+        _, concluidas = req(porta, "GET", "/api/tasks/done")
+        assert concluidas == []
+
+    def test_post_complete_tarefa_inexistente_retorna_404(self, porta):
+        status, data = req(porta, "POST", "/api/tasks/complete", {"id": 9999})
+        assert status == 404
+
 class TestCronograma:
 
     def _criar_cat(self, porta):

@@ -235,14 +235,26 @@ class RepositorioSessoes:
             return dict(row)
 class RepositorioTarefas:
     @staticmethod
-    def listar():
+    def listar(status="todo"):
         with get_db() as conn:
             rows = conn.execute("""
                 SELECT t.*, c.nome as categoria_nome, c.cor as categoria_cor
                 FROM tasks t
                 LEFT JOIN categories c ON t.categoria_id = c.id
-                WHERE t.status = 'todo'
+                WHERE t.status = ?
                 ORDER BY t.criada_em ASC
+            """, (status,)).fetchall()
+            return converter_linhas_para_lista(rows)
+
+    @staticmethod
+    def listar_concluidas():
+        with get_db() as conn:
+            rows = conn.execute("""
+                SELECT t.*, c.nome as categoria_nome, c.cor as categoria_cor
+                FROM tasks t
+                LEFT JOIN categories c ON t.categoria_id = c.id
+                WHERE t.status = 'done'
+                ORDER BY t.concluida_em DESC
             """).fetchall()
             return converter_linhas_para_lista(rows)
 
@@ -285,6 +297,42 @@ class RepositorioTarefas:
             conn.execute("DELETE FROM tasks WHERE id=?", (tid,))
             conn.commit()
             return {"ok": True}
+
+    @staticmethod
+    def completar(tid, concluida_em_iso):
+        with get_db() as conn:
+            existe = conn.execute("SELECT id FROM tasks WHERE id=?", (tid,)).fetchone()
+            if not existe:
+                return None
+            conn.execute(
+                "UPDATE tasks SET status='done', concluida_em=? WHERE id=?",
+                (concluida_em_iso, tid)
+            )
+            conn.commit()
+            row = conn.execute("""
+                SELECT t.*, c.nome as categoria_nome, c.cor as categoria_cor
+                FROM tasks t LEFT JOIN categories c ON t.categoria_id = c.id
+                WHERE t.id=?
+            """, (tid,)).fetchone()
+            return dict(row)
+
+    @staticmethod
+    def reabrir(tid):
+        with get_db() as conn:
+            existe = conn.execute("SELECT id FROM tasks WHERE id=?", (tid,)).fetchone()
+            if not existe:
+                return None
+            conn.execute(
+                "UPDATE tasks SET status='todo', concluida_em=NULL WHERE id=?",
+                (tid,)
+            )
+            conn.commit()
+            row = conn.execute("""
+                SELECT t.*, c.nome as categoria_nome, c.cor as categoria_cor
+                FROM tasks t LEFT JOIN categories c ON t.categoria_id = c.id
+                WHERE t.id=?
+            """, (tid,)).fetchone()
+            return dict(row)
 class RepositorioCronograma:
     DIAS = ['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado', 'domingo']
 

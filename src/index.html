@@ -151,6 +151,7 @@
       <div class="kanban-col-header">
         <span class="kanban-col-title">Concluído</span>
         <span class="kanban-col-count" id="done-count">0</span>
+        <button class="kanban-ver-concluidas" onclick="openDoneTasks()">Ver todas ↗</button>
       </div>
       <div class="kanban-cards" id="done-cards"
            ondragover="onDragOver(event,'done')"
@@ -197,6 +198,16 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeAddSchedule()">Cancelar</button>
       <button class="btn btn-primary" onclick="saveScheduleEntry()">Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="done-tasks-modal">
+  <div class="modal done-tasks-modal">
+    <h3>Tarefas concluídas</h3>
+    <div id="done-tasks-list" class="done-tasks-list"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeDoneTasks()">Fechar</button>
     </div>
   </div>
 </div>

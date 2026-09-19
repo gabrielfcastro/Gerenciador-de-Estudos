@@ -36,6 +36,9 @@ export const Api = {
   stopSession:   (sessionId, durationSeconds) => request('/sessions/stop', {
     method: 'POST', ...withJson({ session_id: sessionId, duration_seconds: durationSeconds }),
   }),
+  // Usa navigator.sendBeacon em vez de fetch: o navegador garante que essa
+  // requisição sai mesmo que a página esteja sendo fechada no mesmo instante
+  // (um fetch normal chamado em 'beforeunload' pode ser cancelado antes de terminar).
   stopSessionBeacon: (sessionId, durationSeconds) => {
     const blob = new Blob(
       [JSON.stringify({ session_id: sessionId, duration_seconds: durationSeconds })],
@@ -62,6 +65,9 @@ export const Api = {
     method: 'PUT', ...withJson({ titulo, categoria_id: categoriaId, nota }),
   }),
   deleteTask:   (id) => request(`/tasks/${id}`, { method: 'DELETE' }),
+  completeTask: (id) => request('/tasks/complete', { method: 'POST', ...withJson({ id }) }).then(r => r.json()),
+  reopenTask:   (id) => request('/tasks/reopen', { method: 'POST', ...withJson({ id }) }).then(r => r.json()),
+  getDoneTasks: () => request('/tasks/done').then(r => r.json()),
 
   getSchedule:         () => request('/schedule').then(r => r.json()),
   createScheduleEntry: (diaSemana, categoriaId) => request('/schedule', {

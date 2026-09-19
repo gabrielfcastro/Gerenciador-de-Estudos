@@ -176,7 +176,7 @@ async function finalizarConclusao(taskId) {
   if (!entry) return;
   completando.delete(taskId);
   renderDoneColumn();
-  await Api.deleteTask(taskId);
+  await Api.completeTask(taskId);
 }
 
 export function undoComplete(taskId) {
@@ -260,4 +260,49 @@ export function initTaskModals() {
   document.getElementById('add-task-modal').addEventListener('click', function (e) { if (e.target === this) closeAddTask(); });
   document.getElementById('inp-task-title').addEventListener('keydown', e => { if (e.key === 'Enter') saveTask(); });
   document.getElementById('view-task-modal').addEventListener('click', function (e) { if (e.target === this) closeViewTask(); });
+  document.getElementById('done-tasks-modal').addEventListener('click', function (e) { if (e.target === this) closeDoneTasks(); });
+}
+
+export async function openDoneTasks() {
+  document.getElementById('done-tasks-modal').classList.add('open');
+  await refreshDoneTasksList();
+}
+
+export function closeDoneTasks() {
+  document.getElementById('done-tasks-modal').classList.remove('open');
+}
+
+async function refreshDoneTasksList() {
+  const el = document.getElementById('done-tasks-list');
+  el.innerHTML = '<div style="color:var(--text3);font-size:.82rem;text-align:center;padding:24px">Carregando…</div>';
+
+  let done = [];
+  try { done = await Api.getDoneTasks(); } catch { done = []; }
+
+  if (!done.length) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:.82rem;text-align:center;padding:32px 16px">Nenhuma tarefa concluída ainda.</div>';
+    return;
+  }
+
+  el.innerHTML = done.map(t => {
+    const { style } = corDoCard(t.categoria_id);
+    const catHtml = t.category_name
+      ? `<div class="kanban-card-cat"><div class="kanban-card-cat-dot" style="background:${t.category_color}"></div>${esc(t.category_name)}</div>`
+      : '';
+    const quando = t.concluida_em ? new Date(t.concluida_em.replace(' ', 'T')).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+    return `<div class="done-task-row" style="${style}">
+      <div class="done-task-info">
+        <div class="kanban-card-title">${esc(t.titulo)}</div>
+        ${catHtml}
+        <span class="done-task-when">Concluída em ${quando}</span>
+      </div>
+      <button class="kanban-undo-btn" onclick="reopenTask(${t.id})">↺ Reabrir</button>
+    </div>`;
+  }).join('');
+}
+
+export async function reopenTask(id) {
+  await Api.reopenTask(id);
+  await refreshDoneTasksList();
+  await loadTasks();
 }

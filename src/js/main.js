@@ -18,6 +18,7 @@ import {
   loadTasks, onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop,
   undoComplete, deleteTask, openAddTask, openEditTask, closeAddTask, saveTask, initTaskModals,
   openTaskView, closeViewTask, editFromView,
+  openDoneTasks, closeDoneTasks, reopenTask,
 } from './tasks.js';
 import {
   loadCronograma, openAddSchedule, closeAddSchedule, saveScheduleEntry, removeScheduleEntry,
@@ -73,6 +74,7 @@ Object.assign(window, {
   onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop,
   undoComplete, deleteTask, openAddTask, openEditTask, closeAddTask, saveTask,
   openTaskView, closeViewTask, editFromView,
+  openDoneTasks, closeDoneTasks, reopenTask,
   openAddSchedule, closeAddSchedule, saveScheduleEntry, removeScheduleEntry,
   onCatChipDragStart, onCatChipDragEnd, onEntryDragStart, onEntryDragEnd,
   onDiaDragOver, onDiaDragLeave, onDiaDrop,

@@ -148,6 +148,21 @@ class ServicoTarefas:
     def deletar(tid) -> dict:
         return RepositorioTarefas.deletar(tid)
 
+    @staticmethod
+    def completar(tid) -> dict | None:
+        agora = datetime.now(timezone.utc).isoformat()
+        res = RepositorioTarefas.completar(tid, agora)
+        return ServicoTarefas._mapear(res) if res else None
+
+    @staticmethod
+    def reabrir(tid) -> dict | None:
+        res = RepositorioTarefas.reabrir(tid)
+        return ServicoTarefas._mapear(res) if res else None
+
+    @staticmethod
+    def listar_concluidas() -> list:
+        return [ServicoTarefas._mapear(t) for t in RepositorioTarefas.listar_concluidas()]
+
 class ServicoCronograma:
 
     @staticmethod

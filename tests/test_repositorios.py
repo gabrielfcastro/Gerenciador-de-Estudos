@@ -375,6 +375,64 @@ class TestTarefas:
         t = RepositorioTarefas.criar("Ler capítulo 3", cat["id"])
         assert t["nota"] == ""
 
+    # ── completar / reabrir (não apaga mais, só muda de status) ──
+
+    def test_completar_muda_status_para_done(self):
+        from repositorio import RepositorioTarefas
+        t = RepositorioTarefas.criar("Estudar", None)
+        res = RepositorioTarefas.completar(t["id"], "2026-01-01T10:00:00+00:00")
+        assert res["status"] == "done"
+        assert res["concluida_em"] == "2026-01-01T10:00:00+00:00"
+
+    def test_completar_some_da_listagem_padrao(self):
+        from repositorio import RepositorioTarefas
+        t = RepositorioTarefas.criar("Estudar", None)
+        RepositorioTarefas.completar(t["id"], "2026-01-01T10:00:00+00:00")
+        assert RepositorioTarefas.listar() == []
+
+    def test_completar_tarefa_inexistente_retorna_none(self):
+        from repositorio import RepositorioTarefas
+        assert RepositorioTarefas.completar(9999, "2026-01-01T10:00:00+00:00") is None
+
+    def test_listar_concluidas_retorna_as_completadas(self):
+        from repositorio import RepositorioTarefas
+        t1 = RepositorioTarefas.criar("Tarefa 1", None)
+        t2 = RepositorioTarefas.criar("Tarefa 2", None)
+        RepositorioTarefas.completar(t1["id"], "2026-01-01T10:00:00+00:00")
+        concluidas = RepositorioTarefas.listar_concluidas()
+        assert len(concluidas) == 1
+        assert concluidas[0]["id"] == t1["id"]
+
+    def test_listar_concluidas_ordena_mais_recente_primeiro(self):
+        from repositorio import RepositorioTarefas
+        t1 = RepositorioTarefas.criar("Primeira concluída", None)
+        t2 = RepositorioTarefas.criar("Segunda concluída", None)
+        RepositorioTarefas.completar(t1["id"], "2026-01-01T08:00:00+00:00")
+        RepositorioTarefas.completar(t2["id"], "2026-01-01T10:00:00+00:00")
+        concluidas = RepositorioTarefas.listar_concluidas()
+        assert concluidas[0]["id"] == t2["id"]  # a mais recente vem primeiro
+
+    def test_reabrir_volta_pra_todo(self):
+        from repositorio import RepositorioTarefas
+        t = RepositorioTarefas.criar("Estudar", None)
+        RepositorioTarefas.completar(t["id"], "2026-01-01T10:00:00+00:00")
+        res = RepositorioTarefas.reabrir(t["id"])
+        assert res["status"] == "todo"
+        assert res["concluida_em"] is None
+
+    def test_reabrir_volta_a_aparecer_na_listagem_padrao(self):
+        from repositorio import RepositorioTarefas
+        t = RepositorioTarefas.criar("Estudar", None)
+        RepositorioTarefas.completar(t["id"], "2026-01-01T10:00:00+00:00")
+        RepositorioTarefas.reabrir(t["id"])
+        tarefas = RepositorioTarefas.listar()
+        assert len(tarefas) == 1
+        assert tarefas[0]["id"] == t["id"]
+
+    def test_reabrir_tarefa_inexistente_retorna_none(self):
+        from repositorio import RepositorioTarefas
+        assert RepositorioTarefas.reabrir(9999) is None
+
     def test_criar_traz_nome_e_cor_da_categoria(self):
         from repositorio import RepositorioTarefas, RepositorioCategorias
         cat = RepositorioCategorias.criar("Dir. Penal", "#123456")

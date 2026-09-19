@@ -481,6 +481,23 @@ header{
 .kanban-col-header{padding:14px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:var(--surface2)}
 .todo-col .kanban-col-header{border-top:3px solid var(--accent)}
 .done-col .kanban-col-header{border-top:3px solid var(--green)}
+.kanban-ver-concluidas{
+  background:none;border:none;color:var(--text2);font-size:.72rem;font-weight:700;
+  cursor:pointer;font-family:inherit;padding:2px 4px;border-radius:6px;transition:all .15s;
+  margin-left:auto;
+}
+.kanban-ver-concluidas:hover{color:var(--accent);background:rgba(124,111,247,.1)}
+.kanban-col-count + .kanban-ver-concluidas{margin-left:8px}
+
+.done-tasks-modal{width:460px;max-width:92vw}
+.done-tasks-list{display:flex;flex-direction:column;gap:8px;max-height:52vh;overflow-y:auto;padding-right:2px}
+.done-task-row{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding:12px 14px;border-radius:var(--r-sm);border:1px solid var(--border);
+  background:var(--surface);
+}
+.done-task-info{display:flex;flex-direction:column;gap:5px;min-width:0}
+.done-task-when{font-size:.7rem;color:var(--text3)}
 .kanban-col-title{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text2)}
 .kanban-col-count{background:var(--surface3);color:var(--text2);font-size:.7rem;font-weight:700;padding:2px 9px;border-radius:99px}
 .kanban-cards{flex:1;padding:10px;display:flex;flex-direction:column;gap:7px;overflow-y:auto;transition:background .15s;min-height:120px}
