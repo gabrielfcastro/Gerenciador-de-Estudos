@@ -117,6 +117,11 @@ class ServicoSessoes:
         res = RepositorioSessoes.criar_manual(categoria_id, started_at, ended_at, nota, calcular_duracao)
         return ServicoSessoes._mapear(res)
 
+    @staticmethod
+    def fechar_sessoes_abertas() -> int:
+        agora = datetime.now(timezone.utc).isoformat()
+        return RepositorioSessoes.fechar_sessoes_abertas(agora, calcular_duracao)
+
 class ServicoTarefas:
 
     @staticmethod

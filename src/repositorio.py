@@ -233,6 +233,23 @@ class RepositorioSessoes:
             conn.commit()
             row = conn.execute("SELECT * FROM sessions WHERE id=?", (cur.lastrowid,)).fetchone()
             return dict(row)
+
+    @staticmethod
+    def fechar_sessoes_abertas(fim_iso, funcao_calcular_duracao):
+        """Fecha toda sessão com fim IS NULL (em andamento), preenchendo fim/duração.
+        Usado como rede de segurança quando o servidor é desligado (Ctrl+C, fechar
+        o terminal, etc) com um timer rodando — sem isso, a sessão ficaria aberta
+        pra sempre, sem contar em lugar nenhum."""
+        with get_db() as conn:
+            abertas = conn.execute("SELECT * FROM sessions WHERE fim IS NULL").fetchall()
+            for row in abertas:
+                duracao = funcao_calcular_duracao(row["inicio"], fim_iso)
+                conn.execute(
+                    "UPDATE sessions SET fim=?, duracao=? WHERE id=?",
+                    (fim_iso, duracao, row["id"])
+                )
+            conn.commit()
+            return len(abertas)
 class RepositorioTarefas:
     @staticmethod
     def listar(status="todo"):

@@ -119,6 +119,17 @@ class TestServicoSessoesMapeamento:
         resultado = self._formatar(['2025-12', '2026-01'], 'all')
         assert resultado == ['Dezembro 2025', 'Janeiro 2026']
 
+class TestServicoSessoesFecharAbertas:
+
+    def test_chama_repositorio_com_timestamp_atual(self):
+        from servicos import ServicoSessoes
+        with patch("servicos.RepositorioSessoes") as mock_repo:
+            mock_repo.fechar_sessoes_abertas.return_value = 1
+            qtd = ServicoSessoes.fechar_sessoes_abertas()
+            assert qtd == 1
+            args = mock_repo.fechar_sessoes_abertas.call_args[0]
+            assert isinstance(args[0], str)  # timestamp ISO
+
 class TestServicoSessoesValidacao:
 
     def test_fim_antes_do_inicio_lanca_erro(self):

@@ -1,5 +1,7 @@
 import json
 import os
+import signal
+import sys
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
@@ -207,8 +209,27 @@ class Handler(BaseHTTPRequestHandler):
     def do_PUT(self):    self._dispatch("PUT")
     def do_DELETE(self): self._dispatch("DELETE")
 
+def _encerrar_com_seguranca(signum, frame):
+    try:
+        qtd = ServicoSessoes.fechar_sessoes_abertas()
+        if qtd:
+            print(f"\n💾 {qtd} sessão(ões) em andamento salva(s) automaticamente antes de desligar.")
+        else:
+            print("\n👋 Nenhuma sessão em andamento pra salvar.")
+    except Exception as e:
+        print(f"\n⚠️  Não consegui salvar a sessão em andamento: {e}")
+    sys.exit(0)
+
 if __name__ == "__main__":
     init_db()
+    # Cobre Ctrl+C (SIGINT), "kill" normal (SIGTERM) e fechar o terminal (SIGHUP,
+    # em sistemas Unix) — em qualquer um desses casos, salva a sessão que estiver
+    # rodando antes de desligar de vez.
+    signal.signal(signal.SIGINT, _encerrar_com_seguranca)
+    signal.signal(signal.SIGTERM, _encerrar_com_seguranca)
+    if hasattr(signal, "SIGHUP"):
+        signal.signal(signal.SIGHUP, _encerrar_com_seguranca)
+
     port = 8000
     print(f"✅ Servidor rodando em http://localhost:{port}")
     HTTPServer(("localhost", port), Handler).serve_forever()

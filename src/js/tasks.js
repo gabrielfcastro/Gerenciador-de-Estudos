@@ -49,7 +49,7 @@ function corDoCard(categoriaId) {
   if (!cat) return { cat: null, style: '' };
   return {
     cat,
-    style: `border-left:4px solid ${cat.color};background:linear-gradient(155deg, ${cat.color}22, var(--surface) 60%)`,
+    style: `border-left:4px solid ${cat.color};background:linear-gradient(155deg, ${cat.color}3d, var(--surface) 75%)`,
   };
 }
 

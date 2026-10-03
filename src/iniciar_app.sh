@@ -24,15 +24,20 @@ echo "🚀 Iniciando Gerenciador de Estudos..."
 python3 app.py &
 SERVER_PID=$!
 
-# Encerra o servidor também quando esta janela for fechada (Ctrl+C ou fechar o terminal)
-trap "echo '🛑 Encerrando servidor...'; kill $SERVER_PID 2>/dev/null" EXIT
+# Encerra o servidor também quando esta janela for fechada (Ctrl+C, fechar
+# a janela do terminal, etc) — cobre vários sinais, não só a saída normal.
+trap "echo '🛑 Encerrando servidor...'; kill $SERVER_PID 2>/dev/null" EXIT INT TERM HUP
 
 # Espera o servidor subir antes de abrir o navegador
 sleep 1
 
-# Abre no navegador padrão
+# Abre no navegador padrão — desgrudado do terminal de propósito (setsid +
+# segundo plano + disown). Sem isso, se o Firefox (ou outro navegador) ainda
+# não estivesse aberto, ele nasceria "preso" a este terminal, e fechar o
+# terminal derrubaria o navegador inteiro (todas as abas, não só esta).
 if command -v xdg-open >/dev/null; then
-  xdg-open "$URL" >/dev/null 2>&1
+  setsid xdg-open "$URL" >/dev/null 2>&1 < /dev/null &
+  disown
 else
   echo "Abra manualmente no navegador: $URL"
 fi

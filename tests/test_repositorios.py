@@ -96,6 +96,44 @@ class TestSessoes:
         assert s["fim"] is None
         assert s["nota"] == "nota"
 
+    # ── fechar_sessoes_abertas (rede de segurança ao desligar o servidor) ──
+
+    def test_fechar_sessoes_abertas_preenche_fim_e_duracao(self):
+        from repositorio import RepositorioSessoes
+        s = RepositorioSessoes.iniciar(None, "2026-01-01T08:00:00+00:00", "")
+        qtd = RepositorioSessoes.fechar_sessoes_abertas("2026-01-01T08:45:00+00:00", calc_duracao)
+        assert qtd == 1
+
+        sessoes = RepositorioSessoes.obter_filtradas("all", None)
+        assert sessoes[0]["fim"] is not None
+        assert sessoes[0]["duracao"] == 2700
+
+    def test_fechar_sessoes_abertas_nao_mexe_em_sessao_ja_encerrada(self):
+        from repositorio import RepositorioSessoes
+        s = RepositorioSessoes.iniciar(None, "2026-01-01T08:00:00+00:00", "")
+        RepositorioSessoes.parar(s["id"], "2026-01-01T08:30:00+00:00", calc_duracao)
+
+        qtd = RepositorioSessoes.fechar_sessoes_abertas("2026-01-01T09:00:00+00:00", calc_duracao)
+        assert qtd == 0  # já estava fechada, não deveria contar nem alterar
+
+        sessoes = RepositorioSessoes.obter_filtradas("all", None)
+        assert sessoes[0]["duracao"] == 1800  # continua com a duração original
+
+    def test_fechar_sessoes_abertas_sem_nenhuma_aberta_retorna_zero(self):
+        from repositorio import RepositorioSessoes
+        assert RepositorioSessoes.fechar_sessoes_abertas(now_iso(), calc_duracao) == 0
+
+    def test_fechar_sessoes_abertas_fecha_todas_se_houver_mais_de_uma(self):
+        from repositorio import RepositorioSessoes
+        RepositorioSessoes.iniciar(None, "2026-01-01T08:00:00+00:00", "")
+        RepositorioSessoes.iniciar(None, "2026-01-01T09:00:00+00:00", "")
+
+        qtd = RepositorioSessoes.fechar_sessoes_abertas("2026-01-01T10:00:00+00:00", calc_duracao)
+        assert qtd == 2
+
+        sessoes = RepositorioSessoes.obter_filtradas("all", None)
+        assert all(s["fim"] is not None for s in sessoes)
+
     def test_parar_registra_duracao(self):
         from repositorio import RepositorioSessoes
         inicio = "2026-01-01T08:00:00+00:00"
