@@ -359,6 +359,44 @@ class TestSessoes:
             monkeypatch.delenv("TZ", raising=False)
             time.tzset()
 
+class TestSegundosPorDia:
+    # horários ao meio-dia UTC pra o dia local ser o mesmo em qualquer fuso razoável
+
+    def _sessao(self, inicio, fim):
+        from repositorio import RepositorioSessoes
+        return RepositorioSessoes.criar_manual(None, inicio, fim, "", calc_duracao)
+
+    def test_soma_sessoes_do_mesmo_dia(self):
+        from repositorio import RepositorioSessoes
+        self._sessao("2026-10-05T12:00:00+00:00", "2026-10-05T13:00:00+00:00")
+        self._sessao("2026-10-05T15:00:00+00:00", "2026-10-05T15:30:00+00:00")
+        res = RepositorioSessoes.obter_segundos_por_dia("2026-10-01")
+        assert res == {"2026-10-05": 5400}
+
+    def test_separa_dias_diferentes(self):
+        from repositorio import RepositorioSessoes
+        self._sessao("2026-10-05T12:00:00+00:00", "2026-10-05T13:00:00+00:00")
+        self._sessao("2026-10-06T12:00:00+00:00", "2026-10-06T14:00:00+00:00")
+        res = RepositorioSessoes.obter_segundos_por_dia("2026-10-01")
+        assert res == {"2026-10-05": 3600, "2026-10-06": 7200}
+
+    def test_ignora_dias_antes_da_data_inicial(self):
+        from repositorio import RepositorioSessoes
+        self._sessao("2026-09-20T12:00:00+00:00", "2026-09-20T13:00:00+00:00")
+        self._sessao("2026-10-05T12:00:00+00:00", "2026-10-05T13:00:00+00:00")
+        res = RepositorioSessoes.obter_segundos_por_dia("2026-10-01")
+        assert "2026-09-20" not in res and "2026-10-05" in res
+
+    def test_ignora_sessao_em_andamento(self):
+        from repositorio import RepositorioSessoes
+        RepositorioSessoes.iniciar(None, "2026-10-05T12:00:00+00:00", "")
+        assert RepositorioSessoes.obter_segundos_por_dia("2026-10-01") == {}
+
+    def test_sem_sessoes_retorna_vazio(self):
+        from repositorio import RepositorioSessoes
+        assert RepositorioSessoes.obter_segundos_por_dia("2026-10-01") == {}
+
+
 class TestTarefas:
 
     def test_criar_sem_categoria(self):

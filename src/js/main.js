@@ -1,3 +1,4 @@
+import { loadHeatmap } from './heatmap.js';
 import { initCselGlobalClose, toggleCsel, pickCsel } from './csel.js';
 import {
   loadCategories, openCatModal, closeCatModal, saveCategory, deleteCat,
@@ -6,7 +7,7 @@ import {
 import {
   loadSettings, openSettings, closeSettings, saveSettings,
   startTimer, togglePause, askStop, closeConfirm, confirmStop, discardStop, dismissAlarm,
-  initTimerModals,
+  initTimerModals, reaplicarCorDeFundo,
 } from './timer.js';
 import {
   loadChart, loadStats, loadSessions, setPeriod, toggleGroup, deleteSess,
@@ -44,6 +45,8 @@ function toggleTheme() {
   const novo = atual === 'dark' ? 'light' : 'dark';
   localStorage.setItem(TEMA_CHAVE, novo);
   aplicarTema(novo);
+  reaplicarCorDeFundo();
+  loadChart();
 }
 
 aplicarTema(localStorage.getItem(TEMA_CHAVE) || 'light');
@@ -80,6 +83,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   await loadChart();
   await loadStats();
   await loadSessions();
+  await loadHeatmap();
 });
 
 Object.assign(window, {

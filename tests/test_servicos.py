@@ -119,6 +119,42 @@ class TestServicoSessoesMapeamento:
         resultado = self._formatar(['2025-12', '2026-01'], 'all')
         assert resultado == ['Dezembro 2025', 'Janeiro 2026']
 
+class TestServicoMapaDeCalor:
+
+    def test_data_inicial_e_a_segunda_feira_de_semanas_atras(self):
+        from datetime import date
+        from servicos import ServicoSessoes
+        with patch("servicos.RepositorioSessoes") as mock_repo:
+            mock_repo.obter_segundos_por_dia.return_value = {}
+            # 08/10/2026 é quinta; com 2 semanas, começa na segunda 28/09/2026
+            res = ServicoSessoes.mapa_de_calor(2, hoje=date(2026, 10, 8))
+            assert res["inicio"] == "2026-09-28"
+            assert res["semanas"] == 2
+            mock_repo.obter_segundos_por_dia.assert_called_once_with("2026-09-28")
+
+    def test_uma_semana_comeca_na_segunda_da_semana_atual(self):
+        from datetime import date
+        from servicos import ServicoSessoes
+        with patch("servicos.RepositorioSessoes") as mock_repo:
+            mock_repo.obter_segundos_por_dia.return_value = {}
+            res = ServicoSessoes.mapa_de_calor(1, hoje=date(2026, 10, 8))
+            assert res["inicio"] == "2026-10-05"
+
+    def test_repassa_os_dias_do_repositorio(self):
+        from datetime import date
+        from servicos import ServicoSessoes
+        with patch("servicos.RepositorioSessoes") as mock_repo:
+            mock_repo.obter_segundos_por_dia.return_value = {"2026-10-05": 3600}
+            res = ServicoSessoes.mapa_de_calor(1, hoje=date(2026, 10, 8))
+            assert res["dias"] == {"2026-10-05": 3600}
+
+    def test_semanas_invalidas_lancam_erro(self):
+        from servicos import ServicoSessoes
+        with pytest.raises(ValueError):
+            ServicoSessoes.mapa_de_calor(0)
+        with pytest.raises(ValueError):
+            ServicoSessoes.mapa_de_calor(54)
+
 class TestServicoSessoesFecharAbertas:
 
     def test_chama_repositorio_com_timestamp_atual(self):

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from repositorio import (
     RepositorioConfiguracoes,
     RepositorioCategorias,
@@ -121,6 +121,16 @@ class ServicoSessoes:
     def fechar_sessoes_abertas() -> int:
         agora = datetime.now(timezone.utc).isoformat()
         return RepositorioSessoes.fechar_sessoes_abertas(agora, calcular_duracao)
+
+    @staticmethod
+    def mapa_de_calor(semanas: int = 26, hoje=None) -> dict:
+        if semanas < 1 or semanas > 53:
+            raise ValueError("semanas deve estar entre 1 e 53")
+        hoje = hoje or date.today()
+        # a grade sempre começa numa segunda-feira, `semanas` semanas atrás
+        inicio = hoje - timedelta(days=hoje.weekday() + (semanas - 1) * 7)
+        dias = RepositorioSessoes.obter_segundos_por_dia(inicio.isoformat())
+        return {"inicio": inicio.isoformat(), "semanas": semanas, "dias": dias}
 
 class ServicoTarefas:
 

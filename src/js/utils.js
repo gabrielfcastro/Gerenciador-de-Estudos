@@ -1,3 +1,8 @@
+// Lê o valor atual de uma variável CSS (ex.: '--text2') — respeita o tema ativo.
+export function lerVarCss(nome, el = document.documentElement) {
+  return getComputedStyle(el).getPropertyValue(nome).trim();
+}
+
 export function hexToRgb(hex) {
   const h = hex.replace('#', '');
   const n = h.length === 3

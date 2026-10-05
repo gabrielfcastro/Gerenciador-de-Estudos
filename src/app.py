@@ -110,6 +110,8 @@ def _criar_roteador():
               qs.get("period", ["week"])[0],
               qs.get("categoria_id", [None])[0],
               qs.get("referencia", [None])[0]))
+    r.add("GET", "/api/heatmap",
+          lambda qs, body: ServicoSessoes.mapa_de_calor(int(qs.get("weeks", ["26"])[0])))
     r.add("GET", "/api/stats",
           lambda qs, body: ServicoSessoes.estatisticas(
               qs.get("period", ["week"])[0],
@@ -230,4 +232,6 @@ if __name__ == "__main__":
     if hasattr(signal, "SIGHUP"):
         signal.signal(signal.SIGHUP, _encerrar_com_seguranca)
 
-    HTTPServer(("localhost", 8000), Handler).serve_forever()
+    port = 8000
+    print(f"✅ Servidor rodando em http://localhost:{port}")
+    HTTPServer(("localhost", port), Handler).serve_forever()

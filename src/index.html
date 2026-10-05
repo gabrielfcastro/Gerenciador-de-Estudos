@@ -122,6 +122,24 @@
       <div class="chart-wrap"><canvas id="chart"></canvas></div>
     </div>
 
+    <div class="heatmap-card card">
+      <h2>Constância</h2>
+      <div class="hm-layout">
+        <div class="hm-left" id="hm-left">
+          <div class="hm-grid" id="hm-grid"></div>
+          <div class="hm-foot">
+            <span class="hm-info" id="hm-info">Passe o mouse sobre um dia</span>
+            <div class="hm-legend"><span>menos</span><i class="hm-sw hm-l0"></i><i class="hm-sw hm-l1"></i><i class="hm-sw hm-l2"></i><i class="hm-sw hm-l3"></i><i class="hm-sw hm-l4"></i><span>mais</span></div>
+          </div>
+        </div>
+        <div class="hm-stats">
+          <div><div class="hm-stat-label">Sequência atual</div><div class="hm-stat-value" id="hm-atual">—</div></div>
+          <div><div class="hm-stat-label">Melhor sequência</div><div class="hm-stat-value" id="hm-melhor">—</div></div>
+          <div><div class="hm-stat-label">Dias estudados</div><div class="hm-stat-value" id="hm-dias">—</div></div>
+        </div>
+      </div>
+    </div>
+
     <div class="sessions-card card">
       <h2>Sessões por matéria</h2>
       <div id="sess-list"><div class="empty">Carregando…</div></div>

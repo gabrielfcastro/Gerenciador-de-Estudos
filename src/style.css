@@ -22,20 +22,25 @@
   --dot-opacity: .18;
   --surface-grad: #c8ccd8;
   --header-bg: rgba(210,214,228,.9);
+  --hm-0: rgba(90,100,150,.16);
+  --hm-1: rgba(124,111,247,.28);
+  --hm-2: rgba(124,111,247,.52);
+  --hm-3: rgba(124,111,247,.76);
+  --hm-4: rgba(124,111,247,1);
   --sidebar-bg: rgba(196,201,216,.5);
   --overlay-bg: rgba(140,148,175,.55);
 }
 
 :root[data-theme="dark"] {
-  --bg:       #15171f;
-  --surface:  #1c1f2b;
-  --surface2: #262a3a;
-  --surface3: #313649;
-  --border:   #363c52;
-  --border2:  #454c68;
-  --text:     #e8eaf2;
-  --text2:    #a7acc4;
-  --text3:    #6e7390;
+  --bg:       #07080c;
+  --surface:  #10121a;
+  --surface2: #181b26;
+  --surface3: #222634;
+  --border:   #272c3c;
+  --border2:  #353b50;
+  --text:     #f2f4fa;
+  --text2:    #b8bdd3;
+  --text3:    #8e94b0;
   --accent:   #8b7ffc;
   --accent2:  #a89bff;
   --accent-g: linear-gradient(135deg,#8b7ffc,#b2a4ff);
@@ -43,13 +48,18 @@
   --red:      #f87171;
   --amber:    #fbbf24;
   --pause:    #60a5fa;
-  --shadow:   0 2px 20px rgba(0,0,0,.45);
-  --shadow-sm:0 1px 8px rgba(0,0,0,.35);
-  --dot-opacity: .10;
-  --surface-grad: #272c3d;
-  --header-bg: rgba(21,23,31,.85);
-  --sidebar-bg: rgba(10,11,16,.4);
-  --overlay-bg: rgba(5,6,10,.65);
+  --shadow:   0 2px 22px rgba(0,0,0,.6);
+  --shadow-sm:0 1px 8px rgba(0,0,0,.5);
+  --dot-opacity: .07;
+  --surface-grad: #161923;
+  --header-bg: rgba(7,8,12,.88);
+  --hm-0: rgba(255,255,255,.07);
+  --hm-1: rgba(139,127,252,.30);
+  --hm-2: rgba(139,127,252,.55);
+  --hm-3: rgba(139,127,252,.80);
+  --hm-4: rgba(139,127,252,1);
+  --sidebar-bg: rgba(0,0,0,.35);
+  --overlay-bg: rgba(0,0,0,.72);
 }
 
 *{box-sizing:border-box;margin:0;padding:0;transition:background-color .2s ease,border-color .2s ease,color .2s ease}
@@ -138,7 +148,7 @@ header{
 
 /* ── card base ── */
 .card{
-  background:linear-gradient(160deg, var(--surface) 0%, #cdd1e0 100%);
+  background:linear-gradient(160deg, var(--surface) 0%, var(--surface-grad) 100%);
   border:1px solid var(--border);
   border-radius:var(--r);
   box-shadow:var(--shadow);
@@ -302,7 +312,7 @@ header{
 .pie-tooltip-externo{
   position:absolute;top:0;left:0;pointer-events:none;
   transform:translate(-50%,-115%);
-  background:#1c1f30;color:#eef0fb;
+  background:#1c1f30;color:#eef0fb;border:1px solid rgba(255,255,255,.14);
   font-family:'Inter',system-ui,sans-serif;font-size:.85rem;font-weight:600;
   padding:9px 13px;border-radius:8px;
   box-shadow:0 8px 24px rgba(20,22,40,.35);
@@ -622,3 +632,29 @@ header{
 .sess-child-time{font-size:.75rem;color:var(--text2);white-space:nowrap;font-variant-numeric:tabular-nums}
 .sess-child-note{font-size:.72rem;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sess-child-dur{font-size:.8rem;font-weight:600;color:var(--text2);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* ── mapa de calor / constância ── */
+.heatmap-card{padding:22px}
+.heatmap-card h2{font-size:.95rem;font-weight:700;margin-bottom:18px}
+.hm-layout{display:flex;gap:56px;align-items:flex-start;flex-wrap:wrap}
+.hm-left{flex:1 1 0;min-width:300px;max-width:calc(var(--hm-n,16) * 32px + 34px)}
+.hm-grid{display:grid;gap:4px;width:100%;grid-template-columns:30px repeat(var(--hm-n,16),minmax(0,1fr))}
+.hm-month{font-size:.68rem;color:var(--text3);white-space:nowrap;line-height:1;padding-bottom:2px}
+.hm-daylabel{font-size:.68rem;color:var(--text3);display:flex;align-items:center}
+.hm-cell{height:0;padding-bottom:100%;border-radius:22%}
+.hm-future{background:transparent}
+.hm-l0{background:var(--hm-0)}
+.hm-l1{background:var(--hm-1)}
+.hm-l2{background:var(--hm-2)}
+.hm-l3{background:var(--hm-3)}
+.hm-l4{background:var(--hm-4)}
+.hm-cell:not(.hm-future):hover{box-shadow:0 0 0 2px var(--text2)}
+.hm-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px}
+.hm-info{font-size:.78rem;color:var(--text2);min-height:1.2em}
+.hm-legend{display:flex;align-items:center;gap:4px;font-size:.75rem;color:var(--text2)}
+.hm-legend span:first-child{margin-right:2px}
+.hm-legend span:last-child{margin-left:2px}
+.hm-sw{flex:none;display:inline-block;width:12px;height:12px;border-radius:3px}
+.hm-stats{flex:none;display:flex;flex-direction:column;gap:20px;padding-left:40px;border-left:1px solid var(--border)}
+.hm-stat-label{font-size:.66rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text2)}
+.hm-stat-value{font-size:1.5rem;font-weight:800;letter-spacing:-.02em;margin-top:4px}

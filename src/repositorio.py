@@ -172,6 +172,19 @@ class RepositorioSessoes:
             return {"total_segundos": total, "total_sessoes": count}
 
     @staticmethod
+    def obter_segundos_por_dia(data_inicial):
+        """Total de segundos estudados em cada dia (data local), a partir de data_inicial."""
+        with get_db() as conn:
+            rows = conn.execute("""
+                SELECT date(inicio, 'localtime') AS dia, SUM(duracao) AS total
+                FROM sessions
+                WHERE fim IS NOT NULL AND date(inicio, 'localtime') >= date(?)
+                GROUP BY dia
+                ORDER BY dia
+            """, (data_inicial,)).fetchall()
+            return {r["dia"]: (r["total"] or 0) for r in rows}
+
+    @staticmethod
     def iniciar(categoria_id, inicio_iso, nota):
         with get_db() as conn:
             cur = conn.execute(

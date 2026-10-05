@@ -513,3 +513,39 @@ class TestCronograma:
             "dia_semana": "segunda"
         })
         assert status == 404
+
+
+class TestMapaDeCalor:
+
+    def test_get_heatmap_devolve_inicio_semanas_e_dias(self, porta):
+        status, data = req(porta, "GET", "/api/heatmap?weeks=4")
+        assert status == 200
+        assert data["semanas"] == 4
+        assert len(data["inicio"]) == 10
+        assert data["dias"] == {}
+
+    def test_get_heatmap_soma_sessao_recente(self, porta):
+        from datetime import datetime, timezone
+        hoje = datetime.now(timezone.utc).replace(hour=12, minute=0, second=0, microsecond=0)
+        req(porta, "POST", "/api/sessions/manual", {
+            "category_id": None,
+            "started_at": hoje.isoformat(),
+            "ended_at": hoje.replace(hour=13).isoformat(),
+            "note": "",
+        })
+        status, data = req(porta, "GET", "/api/heatmap?weeks=4")
+        assert status == 200
+        assert list(data["dias"].values()) == [3600]
+
+    def test_get_heatmap_usa_26_semanas_por_padrao(self, porta):
+        status, data = req(porta, "GET", "/api/heatmap")
+        assert status == 200
+        assert data["semanas"] == 26
+
+    def test_get_heatmap_semanas_zero_retorna_422(self, porta):
+        status, data = req(porta, "GET", "/api/heatmap?weeks=0")
+        assert status == 422
+
+    def test_get_heatmap_semanas_nao_numerica_retorna_422(self, porta):
+        status, data = req(porta, "GET", "/api/heatmap?weeks=abc")
+        assert status == 422

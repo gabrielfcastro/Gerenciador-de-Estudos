@@ -1,9 +1,10 @@
 import { Api } from './api.js';
 import {
-  esc, fmtDuration, formatarLabels, toLocalDatetimeValue, toUTCIso,
+  lerVarCss, esc, fmtDuration, formatarLabels, toLocalDatetimeValue, toUTCIso,
   deslocarReferencia, rotuloPeriodoNavegavel, tooltipDuracao, fmtEixoHoras,
 } from './utils.js';
 import { buildCsel, registerCsel, resetCsel } from './csel.js';
+import { loadHeatmap } from './heatmap.js';
 import { getCategories, onCategoriesChange, onCategoryDeleted, refreshHours } from './categories.js';
 
 let currentPeriod = 'week';
@@ -164,12 +165,12 @@ function renderChart(data) {
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
-        legend: { labels: { color: '#4e5370', font: { size: 12 }, boxWidth: 10, borderRadius: 4 } },
+        legend: { labels: { color: lerVarCss('--text2'), font: { size: 12 }, boxWidth: 10, borderRadius: 4 } },
         tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${tooltipDuracao(c.parsed.y)}` } }
       },
       scales: {
-        x: { stacked: true, ticks: { color: '#4e5370', font: { size: 11 } }, grid: { color: '#a8adc0' } },
-        y: { stacked: true, ticks: { color: '#4e5370', font: { size: 11 }, callback: v => fmtEixoHoras(v) }, grid: { color: '#a8adc0' } }
+        x: { stacked: true, ticks: { color: lerVarCss('--text2'), font: { size: 11 } }, grid: { color: lerVarCss('--border') } },
+        y: { stacked: true, ticks: { color: lerVarCss('--text2'), font: { size: 11 }, callback: v => fmtEixoHoras(v) }, grid: { color: lerVarCss('--border') } }
       }
     }
   });
@@ -199,7 +200,7 @@ export async function loadSessions() {
 
 export async function refreshAll() {
   renderPeriodNav();
-  await Promise.all([loadChart(), loadStats(), loadSessions(), refreshHours(currentPeriod)]);
+  await Promise.all([loadChart(), loadStats(), loadSessions(), refreshHours(currentPeriod), loadHeatmap()]);
 }
 
 function groupSessions(list) {

@@ -3,7 +3,7 @@
 // isPaused, timerInterval, alarmFired, blockSeconds, selCatId.
 
 import { Api } from './api.js';
-import { fmtClock, fmtDuration, parseGoal, blendHex } from './utils.js';
+import { fmtClock, fmtDuration, parseGoal, blendHex, lerVarCss } from './utils.js';
 import { buildCsel, registerCsel } from './csel.js';
 import { getCategories, onCategoriesChange } from './categories.js';
 import { refreshAll as refreshSessions } from './sessions.js';
@@ -41,13 +41,23 @@ export async function loadSettings() {
 // Tinge o fundo inteiro da página com a cor da matéria em estudo, misturada
 // com a cor base do tema atual (clara ou escura — lê ao vivo via getComputedStyle,
 // então funciona nos dois temas sem precisar saber qual está ativo).
+let corFundoAtual = null;
+
 function aplicarCorDeFundo(corCategoria) {
-  const corBase = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+  corFundoAtual = corCategoria;
+  const corBase = lerVarCss('--bg');
   document.body.style.backgroundColor = blendHex(corCategoria, corBase, 0.16);
 }
 
 function limparCorDeFundo() {
+  corFundoAtual = null;
   document.body.style.backgroundColor = '';
+}
+
+// Chamado quando o tema (claro/escuro) muda: recalcula a mistura com a nova cor base.
+// Sem isso o fundo ficava "preso" na mistura feita com o tema anterior.
+export function reaplicarCorDeFundo() {
+  if (corFundoAtual) aplicarCorDeFundo(corFundoAtual);
 }
 
 function renderBlockStatus() {

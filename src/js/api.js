@@ -57,6 +57,8 @@ export const Api = {
     `/stats?period=${period}` + (referencia ? `&referencia=${referencia}` : '')
   ).then(r => r.json()),
 
+  getHeatmap:   (weeks) => request(`/heatmap?weeks=${weeks}`).then(r => r.json()),
+
   getTasks:     () => request('/tasks').then(r => r.json()),
   createTask:   (titulo, categoriaId, nota = '') => request('/tasks', {
     method: 'POST', ...withJson({ titulo, categoria_id: categoriaId, nota }),
