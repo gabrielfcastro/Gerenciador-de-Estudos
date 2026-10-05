@@ -28,6 +28,26 @@ import {
 
 const API = 'http://localhost:8000/api';
 
+// ── Tema (claro/escuro) ──────────────────────────────────────────────────
+// Aplicado logo na carga do módulo (antes do DOMContentLoaded) pra evitar
+// o "flash" do tema claro antes de trocar pro escuro.
+const TEMA_CHAVE = 'gerenciador-tema';
+
+function aplicarTema(tema) {
+  document.documentElement.setAttribute('data-theme', tema);
+  const btn = document.getElementById('btn-theme');
+  if (btn) btn.textContent = tema === 'dark' ? '☀' : '🌙';
+}
+
+function toggleTheme() {
+  const atual = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  const novo = atual === 'dark' ? 'light' : 'dark';
+  localStorage.setItem(TEMA_CHAVE, novo);
+  aplicarTema(novo);
+}
+
+aplicarTema(localStorage.getItem(TEMA_CHAVE) || 'light');
+
 async function checkConn() {
   try { const r = await fetch(`${API}/categories`); setConn(r.ok); }
   catch { setConn(false); }
@@ -64,6 +84,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 Object.assign(window, {
   switchView,
+  toggleTheme,
   toggleCsel, pickCsel,
   openCatModal, closeCatModal, saveCategory, deleteCat, pickColor,
   openSettings, closeSettings, saveSettings,

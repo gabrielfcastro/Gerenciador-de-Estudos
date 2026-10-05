@@ -33,6 +33,14 @@ function elementoFalso() {
   return el;
 }
 
+function elementoComAtributos() {
+  const el = elementoFalso();
+  const attrs = {};
+  el.setAttribute = (k, v) => { attrs[k] = String(v); };
+  el.getAttribute = (k) => (k in attrs ? attrs[k] : null);
+  return el;
+}
+
 global.document = {
   addEventListener(){},
   getElementById(){ return elementoFalso(); },
@@ -40,6 +48,7 @@ global.document = {
   querySelectorAll(){ return []; },
   createElement(){ return elementoFalso(); },
   body: elementoFalso(),
+  documentElement: elementoComAtributos(),
 };
 
 global.window = {
@@ -49,6 +58,14 @@ global.window = {
 global.webkitAudioContext = global.window.AudioContext;
 
 global.Chart = function () { return { destroy(){} }; };
+
+// localStorage existe no navegador, mas não no Node puro — simula aqui.
+const _storage = {};
+global.localStorage = {
+  getItem: (k) => (k in _storage ? _storage[k] : null),
+  setItem: (k, v) => { _storage[k] = String(v); },
+  removeItem: (k) => { delete _storage[k]; },
+};
 
 const caminho = process.argv[2] || './main.js';
 

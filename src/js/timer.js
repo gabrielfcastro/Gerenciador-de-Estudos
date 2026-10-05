@@ -3,7 +3,7 @@
 // isPaused, timerInterval, alarmFired, blockSeconds, selCatId.
 
 import { Api } from './api.js';
-import { fmtClock, fmtDuration, parseGoal } from './utils.js';
+import { fmtClock, fmtDuration, parseGoal, blendHex } from './utils.js';
 import { buildCsel, registerCsel } from './csel.js';
 import { getCategories, onCategoriesChange } from './categories.js';
 import { refreshAll as refreshSessions } from './sessions.js';
@@ -36,6 +36,18 @@ export async function loadSettings() {
     const s = await Api.getSettings();
     if (s.block_duration) { blockSeconds = parseInt(s.block_duration); renderBlockStatus(); }
   } catch {}
+}
+
+// Tinge o fundo inteiro da página com a cor da matéria em estudo, misturada
+// com a cor base do tema atual (clara ou escura — lê ao vivo via getComputedStyle,
+// então funciona nos dois temas sem precisar saber qual está ativo).
+function aplicarCorDeFundo(corCategoria) {
+  const corBase = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+  document.body.style.backgroundColor = blendHex(corCategoria, corBase, 0.16);
+}
+
+function limparCorDeFundo() {
+  document.body.style.backgroundColor = '';
 }
 
 function renderBlockStatus() {
@@ -92,6 +104,7 @@ export async function startTimer() {
     document.getElementById('badge-dot').style.background = cat.color;
     document.getElementById('badge-name').textContent = cat.name;
     document.getElementById('active-badge').style.display = 'flex';
+    aplicarCorDeFundo(cat.color);
   } else {
     document.getElementById('active-badge').style.display = 'none';
   }
@@ -214,6 +227,7 @@ function resetTimerUI() {
   document.querySelector('#cat-csel .csel-trigger').disabled = false;
   document.getElementById('inp-note').value     = '';
   document.title = 'Gerenciador·de·Estudos';
+  limparCorDeFundo();
 }
 
 function fireAlarm() {

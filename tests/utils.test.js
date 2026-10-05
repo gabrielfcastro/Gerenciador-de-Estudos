@@ -6,7 +6,37 @@ import {
   esc, pad, fmtClock, fmtDuration, parseGoal,
   formatarLabels, toLocalDatetimeValue, toUTCIso,
   deslocarReferencia, rotuloPeriodoNavegavel, tooltipDuracao,
+  hexToRgb, blendHex,
 } from '../src/js/utils.js';
+
+test('hexToRgb: converte hex de 6 dígitos corretamente', () => {
+  assert.deepEqual(hexToRgb('#7c6ff7'), { r: 124, g: 111, b: 247 });
+});
+
+test('hexToRgb: converte hex de 3 dígitos (forma curta)', () => {
+  assert.deepEqual(hexToRgb('#fff'), { r: 255, g: 255, b: 255 });
+});
+
+test('hexToRgb: funciona sem o # na frente', () => {
+  assert.deepEqual(hexToRgb('000000'), { r: 0, g: 0, b: 0 });
+});
+
+test('blendHex: peso 1 retorna a primeira cor pura', () => {
+  assert.equal(blendHex('#ff0000', '#0000ff', 1), 'rgb(255, 0, 0)');
+});
+
+test('blendHex: peso 0 retorna a segunda cor pura', () => {
+  assert.equal(blendHex('#ff0000', '#0000ff', 0), 'rgb(0, 0, 255)');
+});
+
+test('blendHex: peso 0.5 mistura igualmente as duas', () => {
+  assert.equal(blendHex('#ff0000', '#0000ff', 0.5), 'rgb(128, 0, 128)');
+});
+
+test('blendHex: peso baixo (tingimento sutil) fica bem mais perto da segunda cor', () => {
+  const resultado = blendHex('#7c6ff7', '#c4c9d8', 0.16);
+  assert.equal(resultado, 'rgb(184, 187, 221)');
+});
 
 test('esc: escapa &, < e > para uso seguro em innerHTML', () => {
   assert.equal(esc('<script>'), '&lt;script&gt;');

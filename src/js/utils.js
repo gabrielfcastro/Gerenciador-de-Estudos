@@ -1,3 +1,21 @@
+export function hexToRgb(hex) {
+  const h = hex.replace('#', '');
+  const n = h.length === 3
+    ? h.split('').map(c => c + c).join('')
+    : h;
+  const num = parseInt(n, 16);
+  return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+}
+
+// Mistura hexA com hexB, onde `peso` (0 a 1) é o quanto de hexA entra na mistura.
+export function blendHex(hexA, hexB, peso) {
+  const a = hexToRgb(hexA), b = hexToRgb(hexB);
+  const r = Math.round(a.r * peso + b.r * (1 - peso));
+  const g = Math.round(a.g * peso + b.g * (1 - peso));
+  const bl = Math.round(a.b * peso + b.b * (1 - peso));
+  return `rgb(${r}, ${g}, ${bl})`;
+}
+
 export function esc(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
