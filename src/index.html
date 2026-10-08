@@ -10,88 +10,106 @@
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-timer" viewBox="0 0 24 24"><line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/></symbol>
+  <symbol id="i-clipboard" viewBox="0 0 24 24"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect width="14" height="14" x="5" y="5" rx="2"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></symbol>
+  <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-file-text" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></symbol>
+</svg>
 
 <header>
   <div class="logo">Gerenciador<span>·</span>de<span>·</span>Estudos</div>
   <nav class="header-nav">
-    <button class="nav-tab active" onclick="switchView('timer',this)">⏱ Timer</button>
-    <button class="nav-tab" onclick="switchView('kanban',this)">📋 Tarefas</button>
-    <button class="nav-tab" onclick="switchView('cronograma',this)">📅 Planejamento</button>
+    <button class="nav-tab active" onclick="switchView('timer',this)"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-timer"/></svg> Timer</button>
+    <button class="nav-tab" onclick="switchView('kanban',this)"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-clipboard"/></svg> Tarefas</button>
+    <button class="nav-tab" onclick="switchView('cronograma',this)"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-calendar"/></svg> Planejamento</button>
   </nav>
-  <div class="conn">
+  <div class="conn" id="conn" hidden>
     <div class="conn-dot" id="conn-dot"></div>
     <span id="conn-label">conectando…</span>
   </div>
-  <button class="btn-settings" id="btn-theme" title="Alternar tema" onclick="toggleTheme()">🌙</button>
-  <button class="btn-settings" title="Configurações" onclick="openSettings()">⚙</button>
+  <button class="btn-settings" id="btn-theme" title="Mudar para o tema escuro" aria-label="Mudar para o tema escuro" onclick="toggleTheme()"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-moon"/></svg></button>
+  <button class="btn-settings" title="Configurações" aria-label="Configurações" onclick="openSettings()"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-settings"/></svg></button>
 </header>
 
 <div id="view-timer" class="view active">
 <div class="main">
   <aside class="sidebar">
     <div>
-      <h3>Matérias</h3>
+      <h3>Matérias <span class="cat-period" id="cat-period"></span></h3>
       <div class="cat-list" id="cat-list">
-        <div style="color:var(--text2);font-size:.82rem;padding:8px 4px">Carregando…</div>
+        <div style="color:var(--text2);font-size:0.875rem;padding:8px 4px">Carregando…</div>
       </div>
-      <button class="btn-add-cat" onclick="openCatModal()">＋ Nova matéria</button>
+      <button class="btn-add-cat" onclick="openCatModal()"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-plus"/></svg> Nova matéria</button>
     </div>
   </aside>
 
   <main class="content">
 
-    <div class="timer-card card">
-      <div class="timer-row1">
-        <div class="field">
-          <label>Matéria</label>
-          <div class="csel" id="cat-csel">
-            <button class="csel-trigger" id="cat-csel-trigger" onclick="toggleCsel('cat-csel')">
-              <span class="csel-dot" id="cat-csel-dot" style="display:none"></span>
-              <span class="csel-text placeholder" id="cat-csel-text">— Escolha uma categoria —</span>
-              <span class="csel-arrow">▼</span>
-            </button>
-            <div class="csel-menu" id="cat-csel-menu"></div>
+    <div class="timer-card card" id="timer-card">
+      <div class="timer-visual">
+        <div class="active-badge" id="active-badge">
+          <div class="dot" id="badge-dot"></div>
+          <span id="badge-name"></span>
+          <span class="badge-note" id="badge-note"></span>
+        </div>
+        <div class="timer-ring">
+          <svg class="ring-svg" viewBox="0 0 200 200" aria-hidden="true" focusable="false">
+            <circle class="ring-bg" cx="100" cy="100" r="92"/>
+            <circle class="ring-fill" id="ring-fill" cx="100" cy="100" r="92" transform="rotate(-90 100 100)"/>
+          </svg>
+          <div class="ring-center">
+            <div class="clock" id="clock" role="timer" aria-label="Tempo da sessão">00:00:00</div>
+            <div class="ring-sub" id="progress-wrap" style="display:none"><span id="pct-label">0%</span> do bloco</div>
+            <div class="paused-tag" id="paused-tag"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-pause"/></svg> pausado</div>
           </div>
         </div>
+        <div class="block-status" id="block-status" style="display:none"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-timer"/></svg> <span class="block-text">Bloco de <span class="bval" id="block-label">—</span></span></div>
       </div>
 
-      <div class="field" style="margin-bottom:14px">
-        <label>Nota da sessão (opcional)</label>
-        <textarea id="inp-note" rows="2" placeholder="Ex: Crimes contra a vida..."></textarea>
-      </div>
-
-      <div class="active-badge" id="active-badge">
-        <div class="dot" id="badge-dot"></div>
-        <span id="badge-name"></span>
-      </div>
-
-      <div class="block-status" id="block-status" style="display:none">
-        ⏱ Bloco: <span class="bval" id="block-label">—</span>
-      </div>
-
-      <div class="timer-display">
-        <div class="clock-wrap">
-          <div class="clock" id="clock">00:00:00</div>
-          <div class="paused-tag" id="paused-tag">⏸ pausado</div>
-        </div>
-        <div class="progress-wrap" id="progress-wrap" style="display:none">
-          <div class="progress-labels">
-            <span>bloco de estudo</span>
-            <span id="pct-label">0%</span>
+      <div class="timer-side">
+        <div class="timer-setup">
+          <div class="field">
+            <label for="cat-csel-trigger">Matéria</label>
+            <div class="csel" id="cat-csel">
+              <button class="csel-trigger" id="cat-csel-trigger" aria-haspopup="listbox" aria-expanded="false" onclick="toggleCsel('cat-csel')">
+                <span class="csel-dot" id="cat-csel-dot" style="display:none"></span>
+                <span class="csel-text placeholder" id="cat-csel-text">— Escolha uma categoria —</span>
+                <span class="csel-arrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-chevron-down"/></svg></span>
+              </button>
+              <div class="csel-menu" id="cat-csel-menu" role="listbox"></div>
+            </div>
           </div>
-          <div class="progress-track">
-            <div class="progress-fill" id="progress-fill"></div>
+          <div class="field">
+            <label for="inp-note">Nota da sessão (opcional)</label>
+            <textarea id="inp-note" rows="2" placeholder="O que você vai estudar? Ex.: capítulo 3, lista de exercícios"></textarea>
           </div>
         </div>
-      </div>
 
-      <div class="timer-controls">
-        <button class="btn btn-primary" id="btn-start"  onclick="startTimer()">▶ Iniciar</button>
-        <button class="btn btn-pause"   id="btn-pause"  onclick="togglePause()" disabled>⏸ Pausar</button>
-        <button class="btn btn-danger"  id="btn-stop"   onclick="askStop()" disabled>■ Parar</button>
-      </div>
+        <div class="timer-controls">
+          <button class="btn btn-primary" id="btn-start" onclick="startTimer()"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-play"/></svg> Iniciar</button>
+          <button class="btn btn-pause" id="btn-pause" onclick="togglePause()" disabled><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-pause"/></svg> Pausar</button>
+          <button class="btn btn-danger" id="btn-stop" onclick="askStop()" disabled><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-stop"/></svg> Parar</button>
+        </div>
 
-      <button class="btn-manual-entry" onclick="openManualSess()">🕐 Adicionar registro manual</button>
+        <button class="btn-manual-entry" onclick="openManualSess()"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-clock"/></svg> Adicionar registro manual</button>
+      </div>
     </div>
 
     <div class="stats-row">
@@ -105,9 +123,9 @@
         <div class="chart-head-left">
           <h2>Horas estudadas</h2>
           <div class="period-nav" id="period-nav" style="display:none">
-            <button class="period-nav-btn" onclick="prevPeriod()" title="Período anterior">‹</button>
+            <button class="period-nav-btn" onclick="prevPeriod()" title="Período anterior" aria-label="Período anterior"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-chevron-left"/></svg></button>
             <span class="period-nav-label" id="period-nav-label"></span>
-            <button class="period-nav-btn" id="period-nav-next" onclick="nextPeriod()" title="Próximo período">›</button>
+            <button class="period-nav-btn" id="period-nav-next" onclick="nextPeriod()" title="Próximo período" aria-label="Próximo período"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-chevron-right"/></svg></button>
           </div>
         </div>
         <div class="period-tabs">
@@ -163,14 +181,14 @@
            ondrop="onDrop(event,'todo')">
       </div>
       <div class="kanban-add-wrap">
-        <button class="kanban-add" onclick="openAddTask()">＋ Nova tarefa</button>
+        <button class="kanban-add" onclick="openAddTask()"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-plus"/></svg> Nova tarefa</button>
       </div>
     </div>
     <div class="kanban-col done-col">
       <div class="kanban-col-header">
         <span class="kanban-col-title">Concluído</span>
         <span class="kanban-col-count" id="done-count">0</span>
-        <button class="kanban-ver-concluidas" onclick="openDoneTasks()">Ver todas ↗</button>
+        <button class="kanban-ver-concluidas" onclick="openDoneTasks()">Ver todas <svg class="ico" aria-hidden="true" focusable="false"><use href="#i-external"/></svg></button>
       </div>
       <div class="kanban-cards" id="done-cards"
            ondragover="onDragOver(event,'done')"
@@ -196,7 +214,7 @@
 </div>
 
 <div class="alarm" id="alarm">
-  ⏰ Tempo de bloco encerrado!
+  <svg class="ico" aria-hidden="true" focusable="false"><use href="#i-timer"/></svg> Tempo de bloco encerrado!
   <button onclick="dismissAlarm()">OK</button>
 </div>
 
@@ -204,14 +222,14 @@
   <div class="modal" style="width:340px">
     <h3 id="add-schedule-title">Adicionar matéria</h3>
     <div class="form-group">
-      <label>Matéria</label>
+      <label for="sched-csel-trigger">Matéria</label>
       <div class="csel" id="sched-csel">
-        <button class="csel-trigger" onclick="toggleCsel('sched-csel')">
+        <button class="csel-trigger" id="sched-csel-trigger" aria-haspopup="listbox" aria-expanded="false" onclick="toggleCsel('sched-csel')">
           <span class="csel-dot" id="sched-csel-dot" style="display:none"></span>
           <span class="csel-text placeholder" id="sched-csel-text">— Escolha uma categoria —</span>
-          <span class="csel-arrow">▼</span>
+          <span class="csel-arrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-chevron-down"/></svg></span>
         </button>
-        <div class="csel-menu" id="sched-csel-menu"></div>
+        <div class="csel-menu" id="sched-csel-menu" role="listbox"></div>
       </div>
     </div>
     <div class="modal-actions">
@@ -243,7 +261,7 @@
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeViewTask()">Fechar</button>
-      <button class="btn btn-primary" onclick="editFromView()">✏ Editar</button>
+      <button class="btn btn-primary" onclick="editFromView()"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-edit"/></svg> Editar</button>
     </div>
   </div>
 </div>
@@ -252,22 +270,22 @@
   <div class="modal">
     <h3 id="task-modal-title">Nova tarefa</h3>
     <div class="form-group">
-      <label>Título</label>
+      <label for="inp-task-title">Título</label>
       <input type="text" id="inp-task-title" placeholder="Ex: Capítulo 3 — Contratos" maxlength="100"/>
     </div>
     <div class="form-group">
-      <label>Matéria <span style="color:var(--red)">*</span></label>
+      <label for="task-csel-trigger">Matéria <span style="color:var(--red)">*</span></label>
       <div class="csel" id="task-csel">
-        <button class="csel-trigger" onclick="toggleCsel('task-csel')">
+        <button class="csel-trigger" id="task-csel-trigger" aria-haspopup="listbox" aria-expanded="false" onclick="toggleCsel('task-csel')">
           <span class="csel-dot" id="task-csel-dot" style="display:none"></span>
           <span class="csel-text placeholder" id="task-csel-text">— Escolha uma categoria —</span>
-          <span class="csel-arrow">▼</span>
+          <span class="csel-arrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-chevron-down"/></svg></span>
         </button>
-        <div class="csel-menu" id="task-csel-menu"></div>
+        <div class="csel-menu" id="task-csel-menu" role="listbox"></div>
       </div>
     </div>
     <div class="form-group">
-      <label>Nota (opcional)</label>
+      <label for="inp-task-note">Nota (opcional)</label>
       <textarea id="inp-task-note" rows="3" placeholder="Detalhe melhor a tarefa…" maxlength="500"></textarea>
     </div>
     <div class="modal-actions">
@@ -281,7 +299,7 @@
   <div class="modal">
     <h3 id="cat-modal-title">Nova matéria</h3>
     <div class="form-group">
-      <label>Nome</label>
+      <label for="inp-cat-name">Nome</label>
       <input type="text" id="inp-cat-name" placeholder="Ex: Matemática" maxlength="40"/>
     </div>
     <div class="form-group">
@@ -299,7 +317,7 @@
   <div class="modal">
     <h3>Configurações</h3>
     <div class="form-group">
-      <label>Duração do bloco de estudo</label>
+      <label for="inp-block">Duração do bloco de estudo</label>
       <input type="text" id="inp-block" placeholder="Ex: 1h15m ou 45m"/>
       <span class="settings-hint">
         Quando o timer atingir esse tempo, um alarme sonoro será disparado uma vez.<br>
@@ -317,29 +335,29 @@
   <div class="modal edit-modal" style="gap:22px;padding:32px">
     <h3>Editar sessão</h3>
     <div class="form-group">
-      <label>Matéria</label>
+      <label for="edit-csel-trigger">Matéria</label>
       <div class="csel" id="edit-csel">
-        <button class="csel-trigger" onclick="toggleCsel('edit-csel')">
+        <button class="csel-trigger" id="edit-csel-trigger" aria-haspopup="listbox" aria-expanded="false" onclick="toggleCsel('edit-csel')">
           <span class="csel-dot" id="edit-csel-dot" style="display:none"></span>
           <span class="csel-text placeholder" id="edit-csel-text">— Escolha uma categoria —</span>
-          <span class="csel-arrow">▼</span>
+          <span class="csel-arrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-chevron-down"/></svg></span>
         </button>
-        <div class="csel-menu" id="edit-csel-menu"></div>
+        <div class="csel-menu" id="edit-csel-menu" role="listbox"></div>
       </div>
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label>Início</label>
+        <label for="edit-start">Início</label>
         <input type="datetime-local" id="edit-start" step="60"/>
         <span class="edit-hint">Ajuste se esqueceu de ligar o timer</span>
       </div>
       <div class="form-group">
-        <label>Fim</label>
+        <label for="edit-end">Fim</label>
         <input type="datetime-local" id="edit-end" step="60"/>
       </div>
     </div>
     <div class="form-group">
-      <label>Nota (opcional)</label>
+      <label for="edit-note">Nota (opcional)</label>
       <input type="text" id="edit-note" placeholder="Ex: Capítulo 3, exercícios 12–20…" maxlength="200"/>
     </div>
     <div class="modal-actions">
@@ -353,28 +371,28 @@
   <div class="modal edit-modal" style="gap:22px;padding:32px">
     <h3>Adicionar registro manual</h3>
     <div class="form-group">
-      <label>Matéria</label>
+      <label for="manual-csel-trigger">Matéria</label>
       <div class="csel" id="manual-csel">
-        <button class="csel-trigger" onclick="toggleCsel('manual-csel')">
+        <button class="csel-trigger" id="manual-csel-trigger" aria-haspopup="listbox" aria-expanded="false" onclick="toggleCsel('manual-csel')">
           <span class="csel-dot" id="manual-csel-dot" style="display:none"></span>
           <span class="csel-text placeholder" id="manual-csel-text">— Escolha uma categoria —</span>
-          <span class="csel-arrow">▼</span>
+          <span class="csel-arrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-chevron-down"/></svg></span>
         </button>
-        <div class="csel-menu" id="manual-csel-menu"></div>
+        <div class="csel-menu" id="manual-csel-menu" role="listbox"></div>
       </div>
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label>Início</label>
+        <label for="manual-start">Início</label>
         <input type="datetime-local" id="manual-start" step="60"/>
       </div>
       <div class="form-group">
-        <label>Fim</label>
+        <label for="manual-end">Fim</label>
         <input type="datetime-local" id="manual-end" step="60"/>
       </div>
     </div>
     <div class="form-group">
-      <label>Nota (opcional)</label>
+      <label for="manual-note">Nota (opcional)</label>
       <input type="text" id="manual-note" placeholder="Ex: Esqueci de iniciar o timer…" maxlength="200"/>
     </div>
     <div class="modal-actions">

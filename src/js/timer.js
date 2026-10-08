@@ -3,10 +3,12 @@
 // isPaused, timerInterval, alarmFired, blockSeconds, selCatId.
 
 import { Api } from './api.js';
-import { fmtClock, fmtDuration, parseGoal, blendHex, lerVarCss } from './utils.js';
+import { fmtClock, fmtDuration, parseGoal, blendHex, lerVarCss, corLegivel } from './utils.js';
 import { buildCsel, registerCsel } from './csel.js';
 import { getCategories, onCategoriesChange } from './categories.js';
 import { refreshAll as refreshSessions } from './sessions.js';
+import { ico } from './icons.js';
+import { toast } from './ui.js';
 
 let activeSession = null;
 let isPaused      = false;
@@ -14,9 +16,10 @@ let timerInterval = null;
 let alarmFired    = false;
 let blockSeconds  = 4500;
 let selCatId      = null;
+const RING_C      = 2 * Math.PI * 92;   // circunferência do anel de progresso (raio 92 no SVG)
 
 registerCsel('cat-csel', {
-  onSelect: (id) => { selCatId = id; },
+  onSelect: (id) => { selCatId = id; previaDaMateria(); },
   getCategories,
 });
 
@@ -41,23 +44,40 @@ export async function loadSettings() {
 // Tinge o fundo inteiro da página com a cor da matéria em estudo, misturada
 // com a cor base do tema atual (clara ou escura — lê ao vivo via getComputedStyle,
 // então funciona nos dois temas sem precisar saber qual está ativo).
+// O relógio usa a cor da matéria, escurecida/clareada só o necessário pra ter
+// contraste de leitura com o cartão (cores claras como lima sumiriam no tema claro).
+function corDoRelogio(corCategoria) {
+  const cartao = lerVarCss('--surface');
+  return /^#[0-9a-f]{6}$/i.test(cartao) ? corLegivel(corCategoria, cartao) : corCategoria;
+}
+
+// Matéria escolhida e timer parado: o relógio já mostra a cor da matéria a estudar.
+function previaDaMateria() {
+  if (activeSession) return;
+  const cat = selCatId ? getCategories().find(c => String(c.id) === String(selCatId)) : null;
+  document.getElementById('clock').style.color = cat ? corDoRelogio(cat.color) : '';
+}
+
 let corFundoAtual = null;
 
 function aplicarCorDeFundo(corCategoria) {
   corFundoAtual = corCategoria;
   const corBase = lerVarCss('--bg');
-  document.body.style.backgroundColor = blendHex(corCategoria, corBase, 0.16);
+  document.body.style.backgroundColor = blendHex(corCategoria, corBase, 0.12);
+  document.getElementById('clock').style.color = corDoRelogio(corCategoria);
 }
 
 function limparCorDeFundo() {
   corFundoAtual = null;
   document.body.style.backgroundColor = '';
+  document.getElementById('clock').style.color = '';
 }
 
 // Chamado quando o tema (claro/escuro) muda: recalcula a mistura com a nova cor base.
 // Sem isso o fundo ficava "preso" na mistura feita com o tema anterior.
 export function reaplicarCorDeFundo() {
   if (corFundoAtual) aplicarCorDeFundo(corFundoAtual);
+  else previaDaMateria();
 }
 
 function renderBlockStatus() {
@@ -79,7 +99,7 @@ export function closeSettings() { document.getElementById('settings-modal').clas
 
 export async function saveSettings() {
   const secs = parseGoal(document.getElementById('inp-block').value.trim());
-  if (!secs) { alert('Formato inválido. Use ex: 1h15m ou 45m'); return; }
+  if (!secs) { toast('Formato inválido. Use, por exemplo, 1h15m ou 45m.', 'erro'); return; }
   blockSeconds = secs;
   await Api.saveSettings(secs);
   renderBlockStatus();
@@ -97,7 +117,9 @@ function elapsedSecs() {
 export async function startTimer() {
   const catId = selCatId;
   if (!catId) {
-    alert('Selecione uma matéria antes de iniciar o bloco de estudos!');
+    toast('Escolha uma matéria antes de iniciar.', 'erro');
+    const gatilho = document.getElementById('cat-csel-trigger');
+    if (gatilho && gatilho.focus) gatilho.focus();
     return;
   }
   const note = document.getElementById('inp-note').value.trim();
@@ -113,14 +135,14 @@ export async function startTimer() {
   if (cat) {
     document.getElementById('badge-dot').style.background = cat.color;
     document.getElementById('badge-name').textContent = cat.name;
+    document.getElementById('badge-note').textContent = note;
     document.getElementById('active-badge').style.display = 'flex';
     aplicarCorDeFundo(cat.color);
   } else {
     document.getElementById('active-badge').style.display = 'none';
   }
-  document.getElementById('clock').style.color = color;
+  document.getElementById('ring-fill').style.stroke = color;
   document.getElementById('clock').classList.add('running');
-  document.getElementById('progress-fill').style.background = color;
   if (blockSeconds > 0) document.getElementById('progress-wrap').style.display = 'block';
 
   const timerCard = document.querySelector('.timer-card');
@@ -142,13 +164,14 @@ function tick() {
   const elapsed = elapsedSecs();
   const clockEl = document.getElementById('clock');
   clockEl.textContent = fmtClock(elapsed);
-  document.title = `⏱ ${fmtClock(elapsed)}`;
+  document.title = fmtClock(elapsed);
 
   if (blockSeconds > 0) {
     const pct = Math.min(100, Math.round((elapsed / blockSeconds) * 100));
-    document.getElementById('progress-fill').style.width = pct + '%';
+    const anel = document.getElementById('ring-fill');
+    anel.style.strokeDashoffset = String(RING_C * (1 - pct / 100));
     document.getElementById('pct-label').textContent = pct + '%';
-    document.getElementById('progress-fill').classList.toggle('over', pct >= 100);
+    anel.classList.toggle('over', pct >= 100);
     if (elapsed >= blockSeconds && !alarmFired) { alarmFired = true; fireAlarm(); }
   }
 }
@@ -162,7 +185,7 @@ export function togglePause() {
   if (!isPaused) {
     activeSession.pausedTotal = elapsedSecs();
     isPaused = true;
-    btn.textContent = '▶ Retomar';
+    btn.innerHTML = ico('play') + ' Retomar';
     btn.classList.replace('btn-pause', 'btn-primary');
     clockEl.classList.add('paused');
     pausedTag.style.display = 'flex';
@@ -170,7 +193,7 @@ export function togglePause() {
   } else {
     activeSession.startedAt = Date.now();
     isPaused = false;
-    btn.innerHTML = '⏸ Pausar';
+    btn.innerHTML = ico('pause') + ' Pausar';
     btn.classList.replace('btn-primary', 'btn-pause');
     clockEl.classList.remove('paused');
     pausedTag.style.display = 'none';
@@ -228,16 +251,22 @@ function resetTimerUI() {
   document.getElementById('btn-start').disabled   = false;
   document.getElementById('btn-pause').disabled   = true;
   document.getElementById('btn-stop').disabled    = true;
-  document.getElementById('btn-pause').textContent = '⏸ Pausar';
+  document.getElementById('btn-pause').innerHTML = ico('pause') + ' Pausar';
   document.getElementById('btn-pause').classList.replace('btn-primary', 'btn-pause');
   document.getElementById('progress-wrap').style.display = 'none';
-  document.getElementById('progress-fill').style.width   = '0%';
+  const anel = document.getElementById('ring-fill');
+  anel.style.strokeDashoffset = '';
+  anel.style.stroke = '';
+  anel.classList.remove('over');
+  document.getElementById('pct-label').textContent = '0%';
+  document.getElementById('badge-note').textContent = '';
   document.getElementById('active-badge').style.display  = 'none';
   document.getElementById('inp-note').disabled  = false;
   document.querySelector('#cat-csel .csel-trigger').disabled = false;
   document.getElementById('inp-note').value     = '';
   document.title = 'Gerenciador·de·Estudos';
   limparCorDeFundo();
+  previaDaMateria();
 }
 
 function fireAlarm() {

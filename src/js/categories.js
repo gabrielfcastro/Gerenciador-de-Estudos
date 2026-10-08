@@ -6,16 +6,21 @@
 // (ex.: sessions.js não precisa saber nada sobre como uma categoria é criada).
 
 import { Api } from './api.js';
-import { esc } from './utils.js';
+import { esc, fmtDuration } from './utils.js';
+import { ico } from './icons.js';
+import { confirmar } from './ui.js';
 
+// Paleta das matérias. Vermelho, verde e azul ficam de fora de propósito: são as
+// cores dos estados do sistema (erro, sucesso, informação) e se confundiriam
+// com uma matéria.
 const COLORS = [
-  '#7c6ff7','#34d399','#f87171','#fbbf24','#60a5fa',
-  '#f472b6','#a78bfa','#2dd4bf','#fb923c','#a3e635',
-  '#e879f9','#38bdf8','#4ade80','#facc15','#f43f5e'
+  '#7c6ff7','#a78bfa','#c084fc','#e879f9','#f472b6','#fb923c',
+  '#fbbf24','#a3e635','#2dd4bf','#22d3ee','#d4a373','#94a3b8'
 ];
 
 let categories = [];
 let catHours   = {};
+let catPeriod  = 'week';
 let editCatId  = null;
 let selColor   = COLORS[0];
 
@@ -38,6 +43,7 @@ export async function loadCategories() {
 }
 
 export async function refreshHours(period) {
+  catPeriod = period;
   try {
     const data = await Api.getChart(period);
     catHours = {};
@@ -50,20 +56,39 @@ export async function refreshHours(period) {
   } catch {}
 }
 
+const ROTULO_PERIODO = {
+  today: 'hoje', week: 'esta semana', month: 'este mês',
+  '6months': 'últimos 6 meses', year: 'último ano', all: 'no total',
+};
+
 function renderCatList() {
+  const periodo = document.getElementById('cat-period');
+  if (periodo) periodo.textContent = ROTULO_PERIODO[catPeriod] || '';
+
   const el = document.getElementById('cat-list');
   if (!el) return;
   if (!categories.length) {
-    el.innerHTML = '<div style="color:var(--text2);font-size:.82rem;padding:8px 4px">Nenhuma matéria ainda.</div>';
+    el.innerHTML = '<div class="cat-empty">Nenhuma matéria ainda.</div>';
     return;
   }
-  el.innerHTML = categories.map(c => `<div class="cat-item" style="border-left:3px solid ${c.color};background:${c.color}18">
-      <span class="cat-name">${esc(c.name)}</span>
-      <div class="cat-acts">
-        <button onclick="openCatModal(${c.id})" title="Editar">✏</button>
-        <button onclick="deleteCat(${c.id})" title="Excluir">✕</button>
+  const maximo = Math.max(0, ...categories.map(c => catHours[c.id] || 0));
+  el.innerHTML = categories.map(c => {
+    const seg  = catHours[c.id] || 0;
+    const pct  = maximo ? Math.round((seg / maximo) * 100) : 0;
+    const nome = esc(c.name);
+    return `<div class="cat-item">
+      <div class="cat-main">
+        <span class="cat-dot" style="background:${c.color}"></span>
+        <span class="cat-name">${nome}</span>
+        <span class="cat-hours">${seg >= 60 ? fmtDuration(seg) : '—'}</span>
+        <div class="cat-acts">
+          <button class="icon-btn" onclick="openCatModal(${c.id})" title="Editar matéria" aria-label="Editar matéria ${nome}">${ico('edit')}</button>
+          <button class="icon-btn" onclick="deleteCat(${c.id})" title="Excluir matéria" aria-label="Excluir matéria ${nome}">${ico('x')}</button>
+        </div>
       </div>
-    </div>`).join('');
+      <div class="cat-bar"><div class="cat-bar-fill" style="width:${pct}%;background:${c.color}"></div></div>
+    </div>`;
+  }).join('');
 }
 
 export function buildSwatches(usedColors = []) {
@@ -114,7 +139,8 @@ export async function saveCategory() {
 }
 
 export async function deleteCat(id) {
-  if (!confirm('Excluir matéria? Sessões existentes ficam sem categoria.')) return;
+  const ok = await confirmar('As sessões já registradas dessa matéria ficam sem categoria.', { titulo: 'Excluir matéria?', confirmar: 'Excluir', perigo: true });
+  if (!ok) return;
   await Api.deleteCategory(id);
   await loadCategories();
   deleteSubscribers.forEach(cb => cb());

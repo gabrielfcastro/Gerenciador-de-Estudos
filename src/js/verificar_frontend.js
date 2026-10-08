@@ -25,6 +25,7 @@ function elementoFalso() {
     querySelectorAll(){ return []; },
     getContext(){ return {}; },
     focus(){}, click(){},
+    setAttribute(){}, getAttribute(){ return null; }, closest(){ return null; }, contains(){ return false; },
   };
   let _text = '', _value = '', _html = '';
   Object.defineProperty(el, 'textContent', { get: () => _text, set: v => { _text = v; } });

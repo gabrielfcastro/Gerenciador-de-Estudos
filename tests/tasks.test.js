@@ -147,3 +147,22 @@ test('reopenTask chama a API de reabrir e recarrega a lista de tarefas', async (
   assert.equal(reopenCalls.length, 1);
   assert.equal(reopenCalls[0], 1);
 });
+
+test('concluirTarefa: botão de concluir (alternativa ao arrastar) leva o card pra coluna Concluído', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  mockFetch([TAREFA]);
+  await tasksMod.loadTasks();
+  tasksMod.concluirTarefa(1);
+  assert.match(document.getElementById('done-cards').innerHTML, /Estudar Penal/);
+  assert.doesNotMatch(document.getElementById('todo-cards').innerHTML, /Estudar Penal/);
+  t.mock.timers.reset();
+});
+
+test('card da tarefa tem botão de concluir acessível, sem depender de arrastar', async () => {
+  mockFetch([TAREFA]);
+  await tasksMod.loadTasks();
+  const html = document.getElementById('todo-cards').innerHTML;
+  assert.match(html, /aria-label="Concluir tarefa"/);
+  assert.match(html, /aria-label="Editar tarefa"/);
+  assert.match(html, /aria-label="Excluir tarefa"/);
+});

@@ -151,3 +151,44 @@ export function fmtEixoHoras(horasDecimais) {
   if (m > 0) return `${m}m`;
   return '0h';
 }
+
+// Total de uma barra empilhada do gráfico: soma o valor de todas as séries na posição i.
+export function somarEmpilhado(series, i) {
+  return series.reduce((soma, s) => soma + (s.data[i] || 0), 0);
+}
+
+// ── Cor legível ──────────────────────────────────────────────────────────────
+// Uma cor de matéria clara (lima, amarelo) some sobre fundo claro. Em vez de
+// trocar a cor, ela é escurecida (ou clareada, no tema escuro) só até ter
+// contraste suficiente, preservando o tom.
+export function luminancia(hex) {
+  const { r, g, b } = hexToRgb(hex);
+  const f = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+}
+
+export function contrasteEntre(a, b) {
+  const [alto, baixo] = [luminancia(a), luminancia(b)].sort((x, y) => y - x);
+  return (alto + 0.05) / (baixo + 0.05);
+}
+
+function rgbParaHex({ r, g, b }) {
+  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
+/** `minimo` 3 é o padrão WCAG para texto grande (o relógio tem 40px ou mais). */
+export function corLegivel(cor, fundo, minimo = 3) {
+  if (contrasteEntre(cor, fundo) >= minimo) return cor;
+  const alvo = luminancia(fundo) > 0.179 ? { r: 0, g: 0, b: 0 } : { r: 255, g: 255, b: 255 };
+  const base = hexToRgb(cor);
+  for (let passo = 1; passo <= 20; passo++) {
+    const p = passo * 0.05;
+    const hex = rgbParaHex({
+      r: Math.round(base.r * (1 - p) + alvo.r * p),
+      g: Math.round(base.g * (1 - p) + alvo.g * p),
+      b: Math.round(base.b * (1 - p) + alvo.b * p),
+    });
+    if (contrasteEntre(hex, fundo) >= minimo) return hex;
+  }
+  return rgbParaHex(alvo);
+}

@@ -6,7 +6,7 @@ import {
   esc, pad, fmtClock, fmtDuration, parseGoal,
   formatarLabels, toLocalDatetimeValue, toUTCIso,
   deslocarReferencia, rotuloPeriodoNavegavel, tooltipDuracao,
-  hexToRgb, blendHex,
+  hexToRgb, blendHex, lerVarCss, somarEmpilhado, contrasteEntre, corLegivel,
 } from '../src/js/utils.js';
 
 test('hexToRgb: converte hex de 6 dígitos corretamente', () => {
@@ -225,4 +225,57 @@ test('tooltipDuracao: converte horas fracionadas em "XhYm" em vez de decimal', (
   assert.equal(tooltipDuracao(1), '1h');
   assert.equal(tooltipDuracao(0.5), '30m');
   assert.equal(tooltipDuracao(0), '0s');
+});
+
+test('lerVarCss: lê a variável CSS do tema atual e tira espaços das pontas', () => {
+  globalThis.document = { documentElement: {} };
+  globalThis.getComputedStyle = () => ({ getPropertyValue: (nome) => nome === '--bg' ? '  #07080c ' : '' });
+  assert.equal(lerVarCss('--bg'), '#07080c');
+});
+
+test('somarEmpilhado: soma o valor de todas as séries numa posição (total da barra)', () => {
+  const series = [{ data: [1, 2, 0] }, { data: [0.5, 0, 0] }, { data: [1.25, 3, 0] }];
+  assert.equal(somarEmpilhado(series, 0), 2.75);
+  assert.equal(somarEmpilhado(series, 1), 5);
+  assert.equal(somarEmpilhado(series, 2), 0);
+});
+
+test('somarEmpilhado: ignora valores ausentes', () => {
+  assert.equal(somarEmpilhado([{ data: [1] }, { data: [] }], 0), 1);
+});
+
+const PALETA = ['#7c6ff7', '#a78bfa', '#c084fc', '#e879f9', '#f472b6', '#fb923c', '#fbbf24', '#a3e635', '#2dd4bf', '#22d3ee', '#d4a373', '#94a3b8'];
+const CORES_ANTIGAS = ['#34d399', '#f87171', '#60a5fa', '#4ade80', '#f43f5e', '#38bdf8', '#facc15'];
+
+test('contrasteEntre: preto sobre branco dá 21 e cor igual dá 1', () => {
+  assert.ok(Math.abs(contrasteEntre('#000000', '#ffffff') - 21) < 0.01);
+  assert.equal(contrasteEntre('#7c6ff7', '#7c6ff7'), 1);
+});
+
+test('corLegivel: mantém a cor quando ela já tem contraste suficiente', () => {
+  assert.equal(corLegivel('#5b52d4', '#f8f9fc'), '#5b52d4');
+});
+
+test('corLegivel: escurece cor clara sobre fundo claro até chegar ao contraste mínimo', () => {
+  const r = corLegivel('#a3e635', '#f8f9fc');
+  assert.notEqual(r, '#a3e635');
+  assert.match(r, /^#[0-9a-f]{6}$/);
+  assert.ok(contrasteEntre(r, '#f8f9fc') >= 3);
+});
+
+test('corLegivel: clareia cor escura sobre fundo escuro', () => {
+  const r = corLegivel('#1e3a8a', '#10121a');
+  assert.notEqual(r, '#1e3a8a');
+  assert.ok(contrasteEntre(r, '#10121a') >= 3);
+});
+
+test('corLegivel: preserva o tom (lima escurecida continua esverdeada)', () => {
+  const { r, g, b } = hexToRgb(corLegivel('#a3e635', '#f8f9fc'));
+  assert.ok(g > r && g > b);
+});
+
+test('corLegivel: toda a paleta de matérias (e as cores antigas) fica legível nos dois temas', () => {
+  for (const fundo of ['#f8f9fc', '#e8ebf3', '#10121a', '#181b26'])
+    for (const c of [...PALETA, ...CORES_ANTIGAS])
+      assert.ok(contrasteEntre(corLegivel(c, fundo), fundo) >= 3, `${c} sobre ${fundo}`);
 });

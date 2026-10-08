@@ -4,6 +4,8 @@ import { Api } from './api.js';
 import { esc } from './utils.js';
 import { buildCsel, registerCsel, resetCsel } from './csel.js';
 import { getCategories } from './categories.js';
+import { ico } from './icons.js';
+import { toast } from './ui.js';
 
 let tasks           = [];
 let draggedId        = null;
@@ -34,7 +36,7 @@ function renderTasks() {
   countEl.textContent = tasks.length;
 
   if (!tasks.length) {
-    todoEl.innerHTML = '<div style="color:var(--text3);font-size:.82rem;text-align:center;padding:32px 16px">Nenhuma tarefa ainda</div>';
+    todoEl.innerHTML = '<div style="color:var(--text3);font-size:0.875rem;text-align:center;padding:32px 16px">Nenhuma tarefa ainda</div>';
   } else {
     todoEl.innerHTML = tasks.map(t => cardHtml(t)).join('');
   }
@@ -63,14 +65,16 @@ function cardHtml(t) {
   const nota = t.nota || t.note || '';
   const notaHtml = nota ? `<div class="kanban-card-note">${esc(nota)}</div>` : '';
   return `<div class="kanban-card" draggable="true" data-id="${t.id}" style="${style}"
+    tabindex="0" onkeydown="if(event.key==='Enter'&&event.target===this)openTaskView(${t.id})"
     onclick="openTaskView(${t.id})"
     ondragstart="onDragStart(event,${t.id})"
     ondragend="onDragEnd(event)">
     <div class="kanban-card-top">
       <div class="kanban-card-title">${esc(t.titulo)}</div>
       <div class="kanban-card-acts">
-        <button class="kanban-card-edit" onclick="event.stopPropagation(); openEditTask(${t.id})" title="Editar">✏</button>
-        <button class="kanban-card-del" onclick="event.stopPropagation(); deleteTask(${t.id})" title="Remover">✕</button>
+        <button class="icon-btn kanban-card-done" onclick="event.stopPropagation(); concluirTarefa(${t.id})" title="Concluir tarefa" aria-label="Concluir tarefa">${ico('check')}</button>
+        <button class="icon-btn kanban-card-edit" onclick="event.stopPropagation(); openEditTask(${t.id})" title="Editar tarefa" aria-label="Editar tarefa">${ico('edit')}</button>
+        <button class="icon-btn kanban-card-del" onclick="event.stopPropagation(); deleteTask(${t.id})" title="Excluir tarefa" aria-label="Excluir tarefa">${ico('x')}</button>
       </div>
     </div>
     ${catHtml}
@@ -101,7 +105,7 @@ function renderDoneColumn() {
         <div class="kanban-card-title">${esc(task.titulo)}</div>
       </div>
       ${catHtml}
-      <button class="kanban-undo-btn" onclick="undoComplete(${task.id})">↺ Desfazer</button>
+      <button class="kanban-undo-btn" onclick="undoComplete(${task.id})">${ico('undo')} Desfazer</button>
     </div>`;
   }).join('');
 }
@@ -179,6 +183,9 @@ async function finalizarConclusao(taskId) {
   await Api.completeTask(taskId);
 }
 
+// Alternativa ao arrastar: concluir por botão (funciona só com teclado).
+export function concluirTarefa(id) { completeTask(id); }
+
 export function undoComplete(taskId) {
   const entry = completando.get(taskId);
   if (!entry) return;
@@ -245,7 +252,7 @@ export async function saveTask() {
   const titulo = document.getElementById('inp-task-title').value.trim();
   const nota   = document.getElementById('inp-task-note').value.trim();
   if (!titulo) return;
-  if (!taskSelCatId) { alert('Selecione uma matéria para a tarefa!'); return; }
+  if (!taskSelCatId) { toast('Escolha uma matéria para a tarefa.', 'erro'); return; }
 
   if (editTaskId) {
     await Api.updateTask(editTaskId, titulo, parseInt(taskSelCatId), nota);
@@ -274,13 +281,13 @@ export function closeDoneTasks() {
 
 async function refreshDoneTasksList() {
   const el = document.getElementById('done-tasks-list');
-  el.innerHTML = '<div style="color:var(--text3);font-size:.82rem;text-align:center;padding:24px">Carregando…</div>';
+  el.innerHTML = '<div style="color:var(--text3);font-size:0.875rem;text-align:center;padding:24px">Carregando…</div>';
 
   let done = [];
   try { done = await Api.getDoneTasks(); } catch { done = []; }
 
   if (!done.length) {
-    el.innerHTML = '<div style="color:var(--text3);font-size:.82rem;text-align:center;padding:32px 16px">Nenhuma tarefa concluída ainda.</div>';
+    el.innerHTML = '<div style="color:var(--text3);font-size:0.875rem;text-align:center;padding:32px 16px">Nenhuma tarefa concluída ainda.</div>';
     return;
   }
 
@@ -296,7 +303,7 @@ async function refreshDoneTasksList() {
         ${catHtml}
         <span class="done-task-when">Concluída em ${quando}</span>
       </div>
-      <button class="kanban-undo-btn" onclick="reopenTask(${t.id})">↺ Reabrir</button>
+      <button class="kanban-undo-btn" onclick="reopenTask(${t.id})">${ico('undo')} Reabrir</button>
     </div>`;
   }).join('');
 }

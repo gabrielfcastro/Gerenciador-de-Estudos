@@ -1,5 +1,7 @@
 import { loadHeatmap } from './heatmap.js';
-import { initCselGlobalClose, toggleCsel, pickCsel } from './csel.js';
+import { atualizarIndicadorConexao } from './conn.js';
+import { ico } from './icons.js';
+import { initCselGlobalClose, initCselKeyboard, toggleCsel, pickCsel } from './csel.js';
 import {
   loadCategories, openCatModal, closeCatModal, saveCategory, deleteCat,
   pickColor, initCategoryModals,
@@ -19,7 +21,7 @@ import {
   loadTasks, onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop,
   undoComplete, deleteTask, openAddTask, openEditTask, closeAddTask, saveTask, initTaskModals,
   openTaskView, closeViewTask, editFromView,
-  openDoneTasks, closeDoneTasks, reopenTask,
+  openDoneTasks, closeDoneTasks, reopenTask, concluirTarefa,
 } from './tasks.js';
 import {
   loadCronograma, openAddSchedule, closeAddSchedule, saveScheduleEntry, removeScheduleEntry,
@@ -37,7 +39,12 @@ const TEMA_CHAVE = 'gerenciador-tema';
 function aplicarTema(tema) {
   document.documentElement.setAttribute('data-theme', tema);
   const btn = document.getElementById('btn-theme');
-  if (btn) btn.textContent = tema === 'dark' ? '☀' : '🌙';
+  if (btn) {
+    const rotulo = tema === 'dark' ? 'Mudar para o tema claro' : 'Mudar para o tema escuro';
+    btn.innerHTML = ico(tema === 'dark' ? 'sun' : 'moon');
+    btn.setAttribute('aria-label', rotulo);
+    btn.setAttribute('title', rotulo);
+  }
 }
 
 function toggleTheme() {
@@ -52,14 +59,9 @@ function toggleTheme() {
 aplicarTema(localStorage.getItem(TEMA_CHAVE) || 'light');
 
 async function checkConn() {
-  try { const r = await fetch(`${API}/categories`); setConn(r.ok); }
-  catch { setConn(false); }
+  try { const r = await fetch(`${API}/categories`); atualizarIndicadorConexao(r.ok); }
+  catch { atualizarIndicadorConexao(false); }
 }
-function setConn(ok) {
-  document.getElementById('conn-dot').className = 'conn-dot' + (ok ? ' ok' : '');
-  document.getElementById('conn-label').textContent = ok ? 'Conectado' : 'Servidor offline';
-}
-
 function switchView(view, btn) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -71,6 +73,7 @@ function switchView(view, btn) {
 
 window.addEventListener('DOMContentLoaded', async () => {
   initCselGlobalClose();
+  initCselKeyboard();
   initCategoryModals();
   initTimerModals();
   initSessionModals();
@@ -78,6 +81,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   initCronogramaModals();
 
   await checkConn();
+  setInterval(checkConn, 20000);   // avisa se o servidor cair no meio do uso
   await loadSettings();
   await loadCategories();
   await loadChart();
@@ -99,7 +103,7 @@ Object.assign(window, {
   onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop,
   undoComplete, deleteTask, openAddTask, openEditTask, closeAddTask, saveTask,
   openTaskView, closeViewTask, editFromView,
-  openDoneTasks, closeDoneTasks, reopenTask,
+  openDoneTasks, closeDoneTasks, reopenTask, concluirTarefa,
   openAddSchedule, closeAddSchedule, saveScheduleEntry, removeScheduleEntry,
   onCatChipDragStart, onCatChipDragEnd, onEntryDragStart, onEntryDragEnd,
   onDiaDragOver, onDiaDragLeave, onDiaDrop,

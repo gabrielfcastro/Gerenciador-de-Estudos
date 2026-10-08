@@ -4,6 +4,7 @@ import { Api } from './api.js';
 import { esc } from './utils.js';
 import { buildCsel, registerCsel, resetCsel } from './csel.js';
 import { getCategories } from './categories.js';
+import { ico } from './icons.js';
 
 const DIAS_CONFIG = [
   { key: 'segunda',  label: 'Segunda' },
@@ -39,12 +40,12 @@ function renderCronogramaCats() {
   if (!el) return;
   const categories = getCategories();
   if (!categories.length) {
-    el.innerHTML = '<span style="color:var(--text3);font-size:.78rem">Crie uma matéria primeiro</span>';
+    el.innerHTML = '<span style="color:var(--text3);font-size:0.75rem">Crie uma matéria primeiro</span>';
     return;
   }
   el.innerHTML = categories.map(c => `
     <div class="cronograma-cat-chip" draggable="true"
-      style="background:${c.color}18;border-color:${c.color}55;color:${c.color}"
+      style="background:${c.color}18;border-color:${c.color}55"
       ondragstart="onCatChipDragStart(event, ${c.id})"
       ondragend="onCatChipDragEnd(event)">
       <div class="cronograma-cat-chip-dot" style="background:${c.color}"></div>
@@ -65,8 +66,8 @@ function renderCronograma() {
             ondragstart="onEntryDragStart(event, ${e.id})"
             ondragend="onEntryDragEnd(event)">
             <div class="pill-dot" style="background:${color}"></div>
-            <span class="pill-nome" style="color:${color}">${esc(name)}</span>
-            <button class="pill-del" style="color:${color}" onclick="removeScheduleEntry(${e.id})" title="Remover">✕</button>
+            <span class="pill-nome">${esc(name)}</span>
+            <button class="icon-btn pill-del" onclick="removeScheduleEntry(${e.id})" title="Remover" aria-label="Remover ${esc(name)} de ${label}">${ico('x')}</button>
           </div>`;
         }).join('')
       : `<div class="cronograma-empty">Arraste uma matéria aqui</div>`;
@@ -77,7 +78,7 @@ function renderCronograma() {
         ondragover="onDiaDragOver(event,'${key}')"
         ondragleave="onDiaDragLeave(event,'${key}')"
         ondrop="onDiaDrop(event,'${key}')">${pillsHtml}</div>
-      <button class="dia-add" onclick="openAddSchedule('${key}','${label}')">＋ Matéria</button>
+      <button class="dia-add" onclick="openAddSchedule('${key}','${label}')">${ico('plus')} Matéria</button>
     </div>`;
   }).join('');
 }

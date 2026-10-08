@@ -108,3 +108,8 @@ test('stopSessionBeacon: envia session_id e duration_seconds no corpo', async ()
   const texto = await blob.text();
   assert.deepEqual(JSON.parse(texto), { session_id: 42, duration_seconds: 1800 });
 });
+
+test('getHeatmap: chama /heatmap com o número de semanas', async () => {
+  await Api.getHeatmap(26);
+  assert.equal(chamadas[0].url, 'http://localhost:8000/api/heatmap?weeks=26');
+});

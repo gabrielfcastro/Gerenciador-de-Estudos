@@ -1,10 +1,12 @@
 import { Api } from './api.js';
 import {
   lerVarCss, esc, fmtDuration, formatarLabels, toLocalDatetimeValue, toUTCIso,
-  deslocarReferencia, rotuloPeriodoNavegavel, tooltipDuracao, fmtEixoHoras,
+  deslocarReferencia, rotuloPeriodoNavegavel, tooltipDuracao, fmtEixoHoras, somarEmpilhado,
 } from './utils.js';
 import { buildCsel, registerCsel, resetCsel } from './csel.js';
 import { loadHeatmap } from './heatmap.js';
+import { ico } from './icons.js';
+import { toast, confirmar } from './ui.js';
 import { getCategories, onCategoriesChange, onCategoryDeleted, refreshHours } from './categories.js';
 
 let currentPeriod = 'week';
@@ -98,6 +100,27 @@ function pieTooltipExterno(context) {
   el.style.top  = (rect.top  + window.scrollY + tooltip.caretY) + 'px';
 }
 
+// Escreve o total de horas no topo de cada barra empilhada (leitura direta, sem tooltip).
+const totaisNoTopo = {
+  id: 'totaisNoTopo',
+  afterDatasetsDraw(chart) {
+    const { ctx, scales: { x, y }, data } = chart;
+    ctx.save();
+    ctx.font = '700 15px Inter, system-ui, sans-serif';
+    ctx.fillStyle = lerVarCss('--text');
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    data.labels.forEach((_, i) => {
+      const horas = somarEmpilhado(data.datasets, i);
+      if (horas <= 0) return;
+      // o texto usa os segundos exatos (as barras guardam horas com 2 casas, que arredondam)
+      const segundos = somarEmpilhado(data.datasets.map(d => ({ data: d.segundos })), i);
+      ctx.fillText(fmtDuration(segundos), x.getPixelForValue(i), y.getPixelForValue(horas) - 8);
+    });
+    ctx.restore();
+  },
+};
+
 function renderChart(data) {
   const ctx = document.getElementById('chart').getContext('2d');
   if (chart) chart.destroy();
@@ -154,23 +177,26 @@ function renderChart(data) {
     return {
       label: name,
       data: periods.map(p => { const r = data.find(d => d.period_key === p && d.category_name === name); return r ? +(r.total_seconds / 3600).toFixed(2) : 0; }),
-      backgroundColor: color + 'cc', borderColor: color, borderWidth: 1, borderRadius: 6,
+      segundos: periods.map(p => { const r = data.find(d => d.period_key === p && d.category_name === name); return r ? r.total_seconds : 0; }),
+      backgroundColor: color, borderColor: lerVarCss('--surface'), borderWidth: 2, borderRadius: 4,
     };
   });
   const uncatData = periods.map(p => { const r = data.find(d => d.period_key === p && !d.category_name); return r ? +(r.total_seconds / 3600).toFixed(2) : 0; });
-  if (uncatData.some(v => v > 0)) datasets.push({ label: 'Sem categoria', data: uncatData, backgroundColor: '#8b90a8cc', borderColor: '#8b90a8', borderWidth: 1, borderRadius: 6 });
+  const uncatSeg = periods.map(p => { const r = data.find(d => d.period_key === p && !d.category_name); return r ? r.total_seconds : 0; });
+  if (uncatData.some(v => v > 0)) datasets.push({ label: 'Sem categoria', data: uncatData, segundos: uncatSeg, backgroundColor: '#94a3b8', borderColor: lerVarCss('--surface'), borderWidth: 2, borderRadius: 4 });
 
   chart = new Chart(ctxBar, {
-    type: 'bar', data: { labels, datasets },
+    type: 'bar', data: { labels, datasets }, plugins: [totaisNoTopo],
     options: {
       responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 4 } },
       plugins: {
-        legend: { labels: { color: lerVarCss('--text2'), font: { size: 12 }, boxWidth: 10, borderRadius: 4 } },
-        tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${tooltipDuracao(c.parsed.y)}` } }
+        legend: { labels: { color: lerVarCss('--text2'), font: { size: 13 }, boxWidth: 10, borderRadius: 4, padding: 14 } },
+        tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${fmtDuration(c.dataset.segundos[c.dataIndex])}` } }
       },
       scales: {
-        x: { stacked: true, ticks: { color: lerVarCss('--text2'), font: { size: 11 } }, grid: { color: lerVarCss('--border') } },
-        y: { stacked: true, ticks: { color: lerVarCss('--text2'), font: { size: 11 }, callback: v => fmtEixoHoras(v) }, grid: { color: lerVarCss('--border') } }
+        x: { stacked: true, ticks: { color: lerVarCss('--text2'), font: { size: 12 } }, grid: { color: lerVarCss('--border') } },
+        y: { stacked: true, grace: '20%', ticks: { color: lerVarCss('--text2'), font: { size: 12 }, callback: v => fmtEixoHoras(v) }, grid: { color: lerVarCss('--border') } }
       }
     }
   });
@@ -225,7 +251,7 @@ function groupSessions(list) {
 
 function renderSessions(list) {
   const el = document.getElementById('sess-list');
-  if (!list.length) { el.innerHTML = '<div class="empty">📚 Nenhuma sessão neste período.</div>'; return; }
+  if (!list.length) { el.innerHTML = '<div class="empty">Nenhuma sessão neste período.</div>'; return; }
   const groups = groupSessions(list);
   el.innerHTML = groups.map(g => {
     const isOpen     = openGroups.has(g.category_id);
@@ -236,23 +262,23 @@ function renderSessions(list) {
       const dur  = s.duration_seconds ? fmtDuration(s.duration_seconds) : '—';
       const raw  = s.started_at || s.inicio || '';
       const dt   = raw ? new Date(raw.replace(' ', 'T')).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
-      const note = s.note ? `<span class="sess-child-note">📝 ${esc(s.note)}</span>` : '';
+      const note = s.note ? `<span class="sess-child-note">${ico('file-text')} ${esc(s.note)}</span>` : '';
       return `<div class="sess-child">
         <div class="sess-child-left">
           <span class="sess-child-time">${dt}</span>${note}
         </div>
         <span class="sess-child-dur">${dur}</span>
-        <button class="sess-edit" onclick="openEditSess(${s.id})" title="Editar">✏</button>
-        <button class="sess-del"  onclick="deleteSess(${s.id})"   title="Excluir">✕</button>
+        <button class="icon-btn sess-edit" onclick="openEditSess(${s.id})" title="Editar sessão" aria-label="Editar sessão">${ico('edit')}</button>
+        <button class="icon-btn sess-del" onclick="deleteSess(${s.id})" title="Excluir sessão" aria-label="Excluir sessão">${ico('x')}</button>
       </div>`;
     }).join('');
     return `<div class="sess-group">
-      <div class="sess-group-header" onclick="toggleGroup(${JSON.stringify(g.category_id)})">
+      <div class="sess-group-header" role="button" tabindex="0" aria-expanded="${isOpen}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" onclick="toggleGroup(${JSON.stringify(g.category_id)})">
         <div class="sess-group-dot" style="background:${g.category_color}"></div>
         <span class="sess-group-name">${esc(g.category_name)}</span>
         <span class="sess-group-meta">${labelCount}</span>
         <span class="sess-group-total">${total}</span>
-        <span class="sess-group-arrow ${isOpen ? 'open' : ''}">▶</span>
+        <span class="sess-group-arrow ${isOpen ? 'open' : ''}">${ico('chevron-right')}</span>
       </div>
       <div class="sess-group-children" style="display:${isOpen ? 'block' : 'none'}">${children}</div>
     </div>`;
@@ -266,7 +292,8 @@ export function toggleGroup(categoryId) {
 }
 
 export async function deleteSess(id) {
-  if (!confirm('Excluir essa sessão de estudo permanentemente?')) return;
+  const ok = await confirmar('Essa sessão de estudo será apagada de vez.', { titulo: 'Excluir sessão?', confirmar: 'Excluir', perigo: true });
+  if (!ok) return;
   await Api.deleteSession(id);
   await refreshAll();
 }
@@ -312,12 +339,12 @@ export function closeEditSess() {
 export async function saveEditSess() {
   const startLocal = document.getElementById('edit-start').value;
   const endLocal   = document.getElementById('edit-end').value;
-  if (!startLocal || !endLocal) { alert('Preencha início e fim.'); return; }
+  if (!startLocal || !endLocal) { toast('Preencha o início e o fim.', 'erro'); return; }
 
   const startUTC = toUTCIso(startLocal);
   const endUTC   = toUTCIso(endLocal);
   if (new Date(endUTC) <= new Date(startUTC)) {
-    alert('O fim deve ser depois do início.'); return;
+    toast('O fim precisa ser depois do início.', 'erro'); return;
   }
 
   const catId = editSelCatId || null;
@@ -362,12 +389,12 @@ export function closeManualSess() {
 export async function saveManualSess() {
   const startLocal = document.getElementById('manual-start').value;
   const endLocal   = document.getElementById('manual-end').value;
-  if (!startLocal || !endLocal) { alert('Preencha início e fim.'); return; }
+  if (!startLocal || !endLocal) { toast('Preencha o início e o fim.', 'erro'); return; }
 
   const startUTC = toUTCIso(startLocal);
   const endUTC   = toUTCIso(endLocal);
   if (new Date(endUTC) <= new Date(startUTC)) {
-    alert('O fim deve ser depois do início.'); return;
+    toast('O fim precisa ser depois do início.', 'erro'); return;
   }
 
   const catId = manualSelCatId || null;
