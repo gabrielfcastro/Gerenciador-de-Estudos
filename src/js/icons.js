@@ -7,6 +7,7 @@ export const NOMES_ICONES = [
   'timer', 'clipboard', 'calendar', 'settings', 'moon', 'sun', 'edit', 'x', 'plus',
   'check', 'undo', 'play', 'pause', 'stop', 'clock', 'external',
   'chevron-right', 'chevron-down', 'chevron-left', 'file-text',
+  'book-open', 'scissors', 'filter', 'search', 'trash', 'minus', 'arrow-left',
 ];
 
 export function ico(nome, extra = '') {

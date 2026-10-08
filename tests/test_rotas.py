@@ -45,6 +45,11 @@ def tabelas_limpas(porta):
     """)
     conn.commit()
     conn.close()
+    # o caderno de questões fica em arquivo próprio
+    conn = sqlite3.connect(database.caminho_questoes())
+    conn.executescript("DELETE FROM question_attempts; DELETE FROM questions;")
+    conn.commit()
+    conn.close()
 
 class TestSettings:
 
@@ -549,3 +554,89 @@ class TestMapaDeCalor:
     def test_get_heatmap_semanas_nao_numerica_retorna_422(self, porta):
         status, data = req(porta, "GET", "/api/heatmap?weeks=abc")
         assert status == 422
+
+
+class TestQuestoes:
+
+    def _me(self, **kw):
+        dados = {"materia_nome": "Dir. Financeiro", "materia_cor": "#d4537e", "assunto": "Restos a pagar", "banca": "FCC",
+                 "tipo": "ME", "enunciado": "Qual está certa?", "alternativas": ["a", "b", "c", "d"],
+                 "gabarito": "B", "justificativa": "porque sim"}
+        dados.update(kw)
+        return dados
+
+    def test_post_cria_questao_de_multipla_escolha(self, porta):
+        status, q = req(porta, "POST", "/api/questions", self._me())
+        assert status == 201
+        assert q["tipo"] == "ME" and q["alternativas"] == ["a", "b", "c", "d"] and q["gabarito"] == "B"
+        assert q["materia_nome"] == "Dir. Financeiro" and q["materia_cor"] == "#d4537e" and q["tentativas"] == 0
+
+    def test_post_cria_questao_certo_errado(self, porta):
+        status, q = req(porta, "POST", "/api/questions", {
+            "materia_nome": "Contabilidade", "tipo": "CE", "enunciado": "Julgue.", "gabarito": "C"})
+        assert status == 201 and q["alternativas"] == [] and q["assunto"] == "" and q["banca"] == ""
+        assert q["materia_cor"] == "#94a3b8"
+
+    def test_get_lista_as_questoes(self, porta):
+        req(porta, "POST", "/api/questions", self._me(enunciado="primeira"))
+        req(porta, "POST", "/api/questions", self._me(enunciado="segunda"))
+        status, lista = req(porta, "GET", "/api/questions")
+        assert status == 200
+        assert [q["enunciado"] for q in lista] == ["segunda", "primeira"]
+
+    def test_post_sem_campo_obrigatorio_retorna_400(self, porta):
+        status, _ = req(porta, "POST", "/api/questions", {"materia_nome": "X", "tipo": "CE", "enunciado": "x"})
+        assert status == 400
+
+    def test_post_invalido_retorna_422_com_mensagem(self, porta):
+        status, data = req(porta, "POST", "/api/questions", self._me(gabarito="E"))
+        assert status == 422 and "gabarito" in data["error"]
+
+    def test_post_sem_materia_retorna_422(self, porta):
+        status, data = req(porta, "POST", "/api/questions", self._me(materia_nome=""))
+        assert status == 422 and "matéria" in data["error"]
+
+    def test_put_atualiza_a_questao(self, porta):
+        _, q = req(porta, "POST", "/api/questions", self._me())
+        status, novo = req(porta, "PUT", f"/api/questions/{q['id']}", self._me(enunciado="editada", gabarito="C", materia_nome="Outra"))
+        assert status == 200 and novo["enunciado"] == "editada" and novo["gabarito"] == "C" and novo["materia_nome"] == "Outra"
+
+    def test_put_inexistente_retorna_404(self, porta):
+        status, _ = req(porta, "PUT", "/api/questions/9999", self._me())
+        assert status == 404
+
+    def test_delete_remove_a_questao(self, porta):
+        _, q = req(porta, "POST", "/api/questions", self._me())
+        status, _ = req(porta, "DELETE", f"/api/questions/{q['id']}")
+        assert status == 200
+        assert req(porta, "GET", "/api/questions")[1] == []
+
+    def test_answer_acerto_atualiza_as_estatisticas(self, porta):
+        _, q = req(porta, "POST", "/api/questions", self._me())
+        status, res = req(porta, "POST", "/api/questions/answer", {"question_id": q["id"], "resposta": "B"})
+        assert status == 200 and res["acertou"] is True and res["gabarito"] == "B"
+        assert res["justificativa"] == "porque sim" and res["tentativas"] == 1
+        lista = req(porta, "GET", "/api/questions")[1]
+        assert lista[0]["tentativas"] == 1 and lista[0]["acertos"] == 1 and lista[0]["ultima_acertou"] is True
+
+    def test_answer_erro_marca_ultima_como_errada(self, porta):
+        _, q = req(porta, "POST", "/api/questions", self._me())
+        _, res = req(porta, "POST", "/api/questions/answer", {"question_id": q["id"], "resposta": "A"})
+        assert res["acertou"] is False
+        assert req(porta, "GET", "/api/questions")[1][0]["ultima_acertou"] is False
+
+    def test_answer_resposta_invalida_retorna_422(self, porta):
+        _, q = req(porta, "POST", "/api/questions", self._me())
+        status, _ = req(porta, "POST", "/api/questions/answer", {"question_id": q["id"], "resposta": "Z"})
+        assert status == 422
+
+    def test_answer_questao_inexistente_retorna_404(self, porta):
+        status, _ = req(porta, "POST", "/api/questions/answer", {"question_id": 9999, "resposta": "A"})
+        assert status == 404
+
+    def test_apagar_a_materia_do_app_nao_apaga_as_questoes(self, porta):
+        _, cat = req(porta, "POST", "/api/categories", {"name": "Dir. Financeiro", "color": "#d4537e"})
+        req(porta, "POST", "/api/questions", self._me())
+        req(porta, "DELETE", f"/api/categories/{cat['id']}")
+        lista = req(porta, "GET", "/api/questions")[1]
+        assert len(lista) == 1 and lista[0]["materia_nome"] == "Dir. Financeiro"

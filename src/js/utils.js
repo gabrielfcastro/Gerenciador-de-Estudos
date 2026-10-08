@@ -25,6 +25,11 @@ export function esc(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// Como esc(), mas também escapa aspas: seguro pra usar dentro de atributos HTML (value="...", title="...").
+export function escAttr(s) {
+  return esc(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 export function pad(n) {
   return String(n).padStart(2, '0');
 }

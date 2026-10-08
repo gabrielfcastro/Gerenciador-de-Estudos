@@ -31,6 +31,13 @@
   <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
   <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
   <symbol id="i-file-text" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></symbol>
+  <symbol id="i-book-open" viewBox="0 0 24 24"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></symbol>
+  <symbol id="i-scissors" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol>
 </svg>
 
 <header>
@@ -39,6 +46,7 @@
     <button class="nav-tab active" onclick="switchView('timer',this)"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-timer"/></svg> Timer</button>
     <button class="nav-tab" onclick="switchView('kanban',this)"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-clipboard"/></svg> Tarefas</button>
     <button class="nav-tab" onclick="switchView('cronograma',this)"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-calendar"/></svg> Planejamento</button>
+    <button class="nav-tab" onclick="switchView('questoes',this)"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-book-open"/></svg> Questões</button>
   </nav>
   <div class="conn" id="conn" hidden>
     <div class="conn-dot" id="conn-dot"></div>
@@ -210,6 +218,41 @@
     <div class="cronograma-grid" id="cronograma-grid">
       <!-- preenchido pelo JS -->
     </div>
+  </div>
+</div>
+
+<!-- ── Questões ── -->
+<div id="view-questoes" class="view">
+  <div class="q-wrap">
+    <section id="q-tela-lista" aria-labelledby="q-titulo">
+      <div class="q-topo">
+        <h2 id="q-titulo">Caderno de questões</h2>
+        <div class="q-topo-acoes" id="q-acoes-topo"></div>
+      </div>
+
+      <div id="q-painel" hidden></div>
+
+      <div class="card q-filtros" id="q-filtros" hidden>
+        <div class="q-filtros-cab">
+          <span class="q-filtros-titulo"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-filter"/></svg> Filtros</span>
+          <button type="button" class="btn btn-ghost" id="qf-limpar" onclick="Questoes.limpar()" hidden>Limpar filtros</button>
+        </div>
+        <div class="q-filtros-grid">
+          <div class="field"><label for="qf-materia">Matéria</label><select id="qf-materia" onchange="Questoes.filtro('materia', this.value)"></select></div>
+          <div class="field"><label for="qf-assunto">Assunto</label><select id="qf-assunto" onchange="Questoes.filtro('assunto', this.value)"></select></div>
+          <div class="field"><label for="qf-banca">Banca</label><select id="qf-banca" onchange="Questoes.filtro('banca', this.value)"></select></div>
+        </div>
+        <div class="q-linha-filtros">
+          <div><span class="q-rotulo" id="qf-tipo-rotulo">Tipo de questão</span><div class="q-seg" id="qf-tipo" role="group" aria-labelledby="qf-tipo-rotulo"></div></div>
+          <label class="q-check"><input type="checkbox" id="qf-erradas" onchange="Questoes.somenteErradas(this.checked)"/> Só as que errei</label>
+          <div class="field q-busca"><label for="qf-busca">Buscar no enunciado</label><input type="text" id="qf-busca" placeholder="Trecho do enunciado" autocomplete="off" oninput="Questoes.buscar(this.value)"/></div>
+        </div>
+      </div>
+
+      <div id="q-resultado"></div>
+    </section>
+
+    <section id="q-tela-refazer" hidden></section>
   </div>
 </div>
 
@@ -398,6 +441,83 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeManualSess()">Cancelar</button>
       <button class="btn btn-primary" onclick="saveManualSess()">Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="q-form-modal" role="dialog" aria-modal="true" aria-labelledby="qm-titulo">
+  <div class="modal q-modal">
+    <div class="q-modal-cab">
+      <h3 id="qm-titulo">Nova questão</h3>
+      <button type="button" class="icon-btn" onclick="Questoes.fecharFormulario()" title="Fechar" aria-label="Fechar"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-x"/></svg></button>
+    </div>
+
+    <div class="q-form-grid">
+      <div class="form-group">
+        <label for="q-csel-trigger">Matéria <span class="q-obrig">*</span></label>
+        <div class="csel" id="q-csel">
+          <button class="csel-trigger" id="q-csel-trigger" aria-haspopup="listbox" aria-expanded="false" onclick="toggleCsel('q-csel')">
+            <span class="csel-dot" id="q-csel-dot" style="display:none"></span>
+            <span class="csel-text placeholder" id="q-csel-text">— Escolha uma matéria —</span>
+            <span class="csel-arrow"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-chevron-down"/></svg></span>
+          </button>
+          <div class="csel-menu" id="q-csel-menu" role="listbox"></div>
+        </div>
+        <span class="q-campo-erro" id="qm-erro-materia" role="alert"></span>
+      </div>
+      <div class="form-group">
+        <label for="qm-assunto">Assunto</label>
+        <input type="text" id="qm-assunto" list="qm-dl-assuntos" maxlength="100" placeholder="Ex.: Restos a pagar" autocomplete="off" oninput="Questoes.editou('assunto')"/>
+        <datalist id="qm-dl-assuntos"></datalist>
+        <span class="q-campo-erro" id="qm-erro-assunto" role="alert"></span>
+      </div>
+      <div class="form-group">
+        <label for="qm-banca">Banca</label>
+        <input type="text" id="qm-banca" list="qm-dl-bancas" maxlength="100" placeholder="Ex.: FCC" autocomplete="off" oninput="Questoes.editou('banca')"/>
+        <datalist id="qm-dl-bancas"></datalist>
+        <span class="q-campo-erro" id="qm-erro-banca" role="alert"></span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <span class="q-rotulo" id="qm-tipo-rotulo">Tipo de questão</span>
+      <div class="q-seg" role="radiogroup" aria-labelledby="qm-tipo-rotulo">
+        <button type="button" class="q-seg-btn" id="qm-tipo-me" role="radio" aria-checked="true" onclick="Questoes.definirTipo('ME')">Múltipla escolha</button>
+        <button type="button" class="q-seg-btn" id="qm-tipo-ce" role="radio" aria-checked="false" onclick="Questoes.definirTipo('CE')">Certo ou errado</button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="qm-enunciado">Enunciado <span class="q-obrig">*</span></label>
+      <textarea id="qm-enunciado" rows="5" oninput="Questoes.editou('enunciado')" placeholder="Cole ou digite o enunciado. As quebras de linha são mantidas."></textarea>
+      <span class="q-campo-erro" id="qm-erro-enunciado" role="alert"></span>
+    </div>
+
+    <div class="form-group" id="qm-bloco-me">
+      <span class="q-rotulo" id="qm-alts-rotulo">Alternativas <span class="q-dica-inline">— marque o círculo da correta. A alternativa E é opcional.</span></span>
+      <div id="qm-alts" role="radiogroup" aria-labelledby="qm-alts-rotulo"></div>
+      <span class="q-campo-erro" id="qm-erro-alternativas" role="alert"></span>
+    </div>
+
+    <div class="form-group" id="qm-bloco-ce" hidden>
+      <span class="q-rotulo" id="qm-ce-rotulo">Gabarito</span>
+      <div class="q-seg" role="radiogroup" aria-labelledby="qm-ce-rotulo">
+        <button type="button" class="q-seg-btn" id="qm-ce-c" role="radio" aria-checked="false" onclick="Questoes.marcarGabarito('C')">Certo</button>
+        <button type="button" class="q-seg-btn" id="qm-ce-e" role="radio" aria-checked="false" onclick="Questoes.marcarGabarito('E')">Errado</button>
+      </div>
+    </div>
+    <span class="q-campo-erro" id="qm-erro-gabarito" role="alert"></span>
+
+    <div class="form-group">
+      <label for="qm-justificativa">Justificativa</label>
+      <textarea id="qm-justificativa" rows="3" placeholder="Por que essa é a resposta? Aparece depois que você responde."></textarea>
+    </div>
+
+    <div class="q-modal-acoes">
+      <button type="button" class="btn btn-danger q-excluir" id="qm-excluir" onclick="Questoes.excluirDoFormulario()" hidden><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-trash"/></svg> Excluir questão</button>
+      <button type="button" class="btn btn-ghost" onclick="Questoes.fecharFormulario()">Cancelar</button>
+      <button type="button" class="btn btn-ghost" id="qm-salvar-outra" onclick="Questoes.salvarEOutra()">Salvar e adicionar outra</button>
+      <button type="button" class="btn btn-primary" onclick="Questoes.salvar()">Salvar</button>
     </div>
   </div>
 </div>

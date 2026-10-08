@@ -644,3 +644,169 @@ class TestCronograma:
     def test_mover_entrada_inexistente_retorna_none(self):
         from repositorio import RepositorioCronograma
         assert RepositorioCronograma.mover(9999, "segunda") is None
+
+
+class TestQuestoes:
+
+    def _criar(self, **kw):
+        from repositorio import RepositorioQuestoes
+        dados = dict(materia_nome="Dir. Financeiro", materia_cor="#d4537e", assunto="Restos a pagar", banca="FCC", tipo="ME",
+                     enunciado="Qual alternativa está correta?", alternativas_json='["a", "b", "c"]', gabarito="B",
+                     justificativa="porque sim")
+        dados.update(kw)
+        return RepositorioQuestoes.criar(**dados)
+
+    def test_criar_devolve_a_questao_com_estatisticas_zeradas(self):
+        q = self._criar()
+        assert q["id"] is not None
+        assert q["materia_nome"] == "Dir. Financeiro" and q["materia_cor"] == "#d4537e"
+        assert q["tipo"] == "ME" and q["gabarito"] == "B"
+        assert q["alternativas"] == '["a", "b", "c"]'
+        assert q["tentativas"] == 0 and q["acertos"] == 0 and q["ultima_acertou"] is None
+
+    def test_listar_traz_a_mais_recente_primeiro(self):
+        from repositorio import RepositorioQuestoes
+        a = self._criar(enunciado="primeira")
+        b = self._criar(enunciado="segunda")
+        assert [q["id"] for q in RepositorioQuestoes.listar()] == [b["id"], a["id"]]
+
+    def test_tentativas_atualizam_as_estatisticas(self):
+        from repositorio import RepositorioQuestoes
+        q = self._criar()
+        RepositorioQuestoes.registrar_tentativa(q["id"], "A", 0)
+        RepositorioQuestoes.registrar_tentativa(q["id"], "B", 1)
+        atual = RepositorioQuestoes.obter(q["id"])
+        assert atual["tentativas"] == 2 and atual["acertos"] == 1
+
+    def test_ultima_tentativa_e_a_mais_recente(self):
+        from repositorio import RepositorioQuestoes
+        q = self._criar()
+        RepositorioQuestoes.registrar_tentativa(q["id"], "B", 1)
+        RepositorioQuestoes.registrar_tentativa(q["id"], "A", 0)
+        assert RepositorioQuestoes.obter(q["id"])["ultima_acertou"] == 0
+
+    def test_obter_inexistente_retorna_none(self):
+        from repositorio import RepositorioQuestoes
+        assert RepositorioQuestoes.obter(9999) is None
+
+    def test_atualizar_muda_os_campos_inclusive_a_materia(self):
+        from repositorio import RepositorioQuestoes
+        q = self._criar()
+        novo = RepositorioQuestoes.atualizar(
+            q["id"], materia_nome="Contabilidade", materia_cor="#1d9e75", assunto="Outro", banca="FGV", tipo="CE",
+            enunciado="Julgue", alternativas_json="[]", gabarito="C", justificativa="j")
+        assert novo["materia_nome"] == "Contabilidade" and novo["materia_cor"] == "#1d9e75"
+        assert novo["assunto"] == "Outro" and novo["tipo"] == "CE" and novo["gabarito"] == "C"
+
+    def test_atualizar_inexistente_retorna_none(self):
+        from repositorio import RepositorioQuestoes
+        assert RepositorioQuestoes.atualizar(
+            9999, materia_nome="X", materia_cor="#000000", assunto="", banca="", tipo="CE",
+            enunciado="x", alternativas_json="[]", gabarito="C", justificativa="") is None
+
+    def test_deletar_apaga_a_questao_e_as_tentativas(self):
+        import sqlite3, database
+        from repositorio import RepositorioQuestoes
+        q = self._criar()
+        RepositorioQuestoes.registrar_tentativa(q["id"], "B", 1)
+        RepositorioQuestoes.deletar(q["id"])
+        assert RepositorioQuestoes.obter(q["id"]) is None
+        conn = sqlite3.connect(database.caminho_questoes())
+        assert conn.execute("SELECT COUNT(*) FROM question_attempts").fetchone()[0] == 0
+        conn.close()
+
+    def test_tipo_invalido_e_rejeitado_pelo_banco(self):
+        import sqlite3
+        with pytest.raises(sqlite3.IntegrityError):
+            self._criar(tipo="XX")
+
+
+class TestCadernoEmArquivoProprio:
+    """O caderno mora em caderno_de_questoes.db: nenhum "novo ciclo" do banco principal o alcança."""
+
+    def _criar(self, **kw):
+        from repositorio import RepositorioQuestoes
+        dados = dict(materia_nome="Dir. Financeiro", materia_cor="#d4537e", assunto="", banca="", tipo="CE",
+                     enunciado="Julgue.", alternativas_json="[]", gabarito="C", justificativa="")
+        dados.update(kw)
+        return RepositorioQuestoes.criar(**dados)
+
+    def test_o_arquivo_fica_ao_lado_do_banco_principal(self):
+        import os, database
+        assert os.path.dirname(database.caminho_questoes()) == os.path.dirname(os.path.abspath(database.db_path))
+        assert os.path.basename(database.caminho_questoes()) == "caderno_de_questoes.db"
+
+    def test_as_questoes_nao_ficam_no_banco_principal(self):
+        import sqlite3, database
+        self._criar()
+        conn = sqlite3.connect(database.db_path)
+        tabelas = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        conn.close()
+        assert "questions" not in tabelas and "question_attempts" not in tabelas
+
+    def test_novo_ciclo_apagando_o_banco_principal_nao_apaga_o_caderno(self):
+        import os, database
+        from repositorio import RepositorioQuestoes
+        q = self._criar(enunciado="sobrevive ao ciclo")
+        RepositorioQuestoes.registrar_tentativa(q["id"], "C", 1)
+        os.remove(database.db_path)           # é o que o novo_ciclo.sh faz
+        database.init_db()                    # e o app recria o banco vazio ao subir
+        lista = RepositorioQuestoes.listar()
+        assert [x["enunciado"] for x in lista] == ["sobrevive ao ciclo"]
+        assert lista[0]["tentativas"] == 1
+
+    def test_apagar_a_materia_do_app_nao_mexe_nas_questoes(self):
+        from repositorio import RepositorioQuestoes, RepositorioCategorias
+        cat = RepositorioCategorias.criar("Dir. Financeiro", "#d4537e")
+        self._criar()
+        RepositorioCategorias.deletar(cat["id"])
+        q = RepositorioQuestoes.listar()[0]
+        assert q["materia_nome"] == "Dir. Financeiro" and q["materia_cor"] == "#d4537e"
+
+    def _banco_antigo(self):
+        """Reproduz a versão anterior: as questões dentro do banco principal, ligadas à matéria pelo id."""
+        import os, sqlite3, database
+        os.remove(database.caminho_questoes())
+        conn = sqlite3.connect(database.db_path)
+        conn.executescript("""
+            CREATE TABLE questions (id INTEGER PRIMARY KEY AUTOINCREMENT, categoria_id INTEGER, assunto TEXT NOT NULL DEFAULT '',
+                banca TEXT NOT NULL DEFAULT '', tipo TEXT NOT NULL, enunciado TEXT NOT NULL, alternativas TEXT NOT NULL DEFAULT '[]',
+                gabarito TEXT NOT NULL, justificativa TEXT NOT NULL DEFAULT '', criada_em TEXT);
+            CREATE TABLE question_attempts (id INTEGER PRIMARY KEY AUTOINCREMENT, question_id INTEGER NOT NULL,
+                resposta TEXT NOT NULL, acertou INTEGER NOT NULL, respondida_em TEXT);
+            INSERT INTO categories (id, nome, cor) VALUES (7, 'Contabilidade', '#1d9e75');
+            INSERT INTO questions (id, categoria_id, assunto, banca, tipo, enunciado, alternativas, gabarito, justificativa, criada_em)
+                VALUES (3, 7, 'Depreciação', 'FCC', 'ME', 'Qual?', '["a","b"]', 'B', 'j', '2026-01-01 10:00:00'),
+                       (4, NULL, '', '', 'CE', 'Sem matéria.', '[]', 'C', '', '2026-01-02 10:00:00');
+            INSERT INTO question_attempts (question_id, resposta, acertou) VALUES (3, 'A', 0), (3, 'B', 1);
+        """)
+        conn.commit(); conn.close()
+
+    def test_questoes_da_versao_anterior_sao_migradas_sem_perda(self):
+        import database
+        from repositorio import RepositorioQuestoes
+        self._banco_antigo()
+        database.init_db()
+        por_id = {q["id"]: q for q in RepositorioQuestoes.listar()}
+        assert set(por_id) == {3, 4}
+        q3 = por_id[3]
+        assert (q3["materia_nome"], q3["materia_cor"], q3["assunto"], q3["banca"], q3["gabarito"]) == ("Contabilidade", "#1d9e75", "Depreciação", "FCC", "B")
+        assert q3["tentativas"] == 2 and q3["acertos"] == 1 and q3["ultima_acertou"] == 1
+        assert por_id[4]["materia_nome"] == "Sem matéria"
+
+    def test_a_migracao_roda_uma_vez_so(self):
+        import database
+        from repositorio import RepositorioQuestoes
+        self._banco_antigo()
+        database.init_db()
+        database.init_db()
+        assert len(RepositorioQuestoes.listar()) == 2
+
+    def test_depois_de_migrar_o_caderno_novo_nao_e_afetado_pelo_antigo(self):
+        import database
+        from repositorio import RepositorioQuestoes
+        self._banco_antigo()
+        database.init_db()
+        RepositorioQuestoes.deletar(3)
+        database.init_db()                        # reiniciar o app não "ressuscita" a questão apagada
+        assert [q["id"] for q in RepositorioQuestoes.listar()] == [4]

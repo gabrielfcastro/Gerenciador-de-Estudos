@@ -514,3 +514,129 @@ class TestRoteador:
         r.add("GET", "/api/test", lambda qs, body: {})
         res, status = r.despachar("POST", "/api/test", {}, {})
         assert status == 404
+
+
+class TestServicoQuestoes:
+
+    ROW = {"id": 1, "materia_nome": "Dir", "materia_cor": "#ffffff", "assunto": "A", "banca": "FCC", "tipo": "ME",
+           "enunciado": "e", "alternativas": '["x", "y"]', "gabarito": "B", "justificativa": "", "criada_em": "2026-01-01",
+           "tentativas": 2, "acertos": 1, "ultima_acertou": 1}
+
+    def _criar(self, repo, **kw):
+        from servicos import ServicoQuestoes
+        repo.criar.return_value = dict(self.ROW)
+        args = dict(materia_nome="Dir. Financeiro", materia_cor="#d4537e", assunto="Restos a pagar", banca="FCC", tipo="ME",
+                    enunciado="Texto", alternativas=["a", "b", "c"], gabarito="B", justificativa="")
+        args.update(kw)
+        return ServicoQuestoes.criar(**args)
+
+    def test_me_valido_normaliza_e_grava(self):
+        import json
+        with patch("servicos.RepositorioQuestoes") as repo:
+            self._criar(repo, alternativas=["  a ", "b", "c", "", " "], gabarito="b", tipo=" me ")
+            kw = repo.criar.call_args.kwargs
+            assert json.loads(kw["alternativas_json"]) == ["a", "b", "c"]
+            assert kw["gabarito"] == "B" and kw["tipo"] == "ME"
+
+    def test_ce_ignora_alternativas(self):
+        import json
+        with patch("servicos.RepositorioQuestoes") as repo:
+            self._criar(repo, tipo="CE", alternativas=["lixo"], gabarito="c")
+            kw = repo.criar.call_args.kwargs
+            assert json.loads(kw["alternativas_json"]) == [] and kw["gabarito"] == "C"
+
+    def test_materia_assunto_e_banca_tem_espacos_normalizados(self):
+        with patch("servicos.RepositorioQuestoes") as repo:
+            self._criar(repo, materia_nome="  Dir.   Financeiro ", assunto="  Restos   a  pagar ", banca="  fcc ")
+            kw = repo.criar.call_args.kwargs
+            assert kw["materia_nome"] == "Dir. Financeiro"
+            assert kw["assunto"] == "Restos a pagar" and kw["banca"] == "fcc"
+
+    def test_assunto_e_banca_sao_opcionais(self):
+        with patch("servicos.RepositorioQuestoes") as repo:
+            self._criar(repo, assunto=None, banca="")
+            kw = repo.criar.call_args.kwargs
+            assert kw["assunto"] == "" and kw["banca"] == ""
+
+    def test_cor_valida_e_mantida_em_minusculas(self):
+        with patch("servicos.RepositorioQuestoes") as repo:
+            self._criar(repo, materia_cor="#D4537E")
+            assert repo.criar.call_args.kwargs["materia_cor"] == "#d4537e"
+
+    @pytest.mark.parametrize("cor", [None, "", "azul", "#12", "#gggggg", "red; background:url(x)"])
+    def test_cor_invalida_vira_cor_padrao(self, cor):
+        with patch("servicos.RepositorioQuestoes") as repo:
+            self._criar(repo, materia_cor=cor)
+            assert repo.criar.call_args.kwargs["materia_cor"] == "#94a3b8"
+
+    @pytest.mark.parametrize("campo,valor,trecho", [
+        ("materia_nome", None, "matéria"),
+        ("materia_nome", "   ", "matéria"),
+        ("materia_nome", "x" * 101, "matéria"),
+        ("enunciado", "   ", "enunciado"),
+        ("tipo", "XX", "tipo"),
+        ("alternativas", ["so uma"], "pelo menos 2"),
+        ("alternativas", list("abcdef"), "máximo de 5"),
+        ("alternativas", ["a", "", "c"], "em ordem"),
+        ("gabarito", "E", "gabarito"),
+        ("gabarito", "", "gabarito"),
+        ("assunto", "x" * 101, "assunto"),
+        ("banca", "x" * 101, "banca"),
+    ])
+    def test_entradas_invalidas_viram_erro(self, campo, valor, trecho):
+        with patch("servicos.RepositorioQuestoes") as repo:
+            with pytest.raises(ValueError, match=trecho):
+                self._criar(repo, **{campo: valor})
+            assert not repo.criar.called
+
+    def test_ce_com_gabarito_de_letra_e_invalido(self):
+        with patch("servicos.RepositorioQuestoes") as repo:
+            with pytest.raises(ValueError, match="C ou E"):
+                self._criar(repo, tipo="CE", gabarito="A")
+
+    def test_mapeia_a_linha_do_banco_para_a_api(self):
+        from servicos import ServicoQuestoes
+        with patch("servicos.RepositorioQuestoes") as repo:
+            repo.listar.return_value = [dict(self.ROW), {**self.ROW, "ultima_acertou": 0}, {**self.ROW, "ultima_acertou": None, "tentativas": 0}]
+            a, b, c = ServicoQuestoes.listar()
+            assert a["alternativas"] == ["x", "y"]
+            assert a["ultima_acertou"] is True and b["ultima_acertou"] is False and c["ultima_acertou"] is None
+            assert a["tentativas"] == 2 and a["acertos"] == 1
+
+    def test_atualizar_inexistente_retorna_none(self):
+        from servicos import ServicoQuestoes
+        with patch("servicos.RepositorioQuestoes") as repo:
+            repo.atualizar.return_value = None
+            assert ServicoQuestoes.atualizar(9, "Dir", "#ffffff", "", "", "CE", "x", None, "C", "") is None
+
+    def test_responder_acerto_registra_tentativa(self):
+        from servicos import ServicoQuestoes
+        with patch("servicos.RepositorioQuestoes") as repo:
+            repo.obter.side_effect = [dict(self.ROW), {**self.ROW, "tentativas": 3, "acertos": 2}]
+            res = ServicoQuestoes.responder(1, "b")
+            repo.registrar_tentativa.assert_called_once_with(1, "B", 1)
+            assert res["acertou"] is True and res["gabarito"] == "B" and res["tentativas"] == 3
+
+    def test_responder_erro_registra_tentativa_com_zero(self):
+        from servicos import ServicoQuestoes
+        with patch("servicos.RepositorioQuestoes") as repo:
+            repo.obter.side_effect = [dict(self.ROW), dict(self.ROW)]
+            res = ServicoQuestoes.responder(1, "A")
+            repo.registrar_tentativa.assert_called_once_with(1, "A", 0)
+            assert res["acertou"] is False
+
+    def test_responder_questao_inexistente_retorna_none(self):
+        from servicos import ServicoQuestoes
+        with patch("servicos.RepositorioQuestoes") as repo:
+            repo.obter.return_value = None
+            assert ServicoQuestoes.responder(9, "A") is None
+            assert not repo.registrar_tentativa.called
+
+    @pytest.mark.parametrize("tipo,resposta", [("ME", "E"), ("ME", ""), ("ME", "Z"), ("CE", "A")])
+    def test_responder_com_resposta_invalida_vira_erro(self, tipo, resposta):
+        from servicos import ServicoQuestoes
+        with patch("servicos.RepositorioQuestoes") as repo:
+            repo.obter.return_value = {**self.ROW, "tipo": tipo, "alternativas": '["x", "y"]' if tipo == "ME" else "[]"}
+            with pytest.raises(ValueError, match="resposta"):
+                ServicoQuestoes.responder(1, resposta)
+            assert not repo.registrar_tentativa.called

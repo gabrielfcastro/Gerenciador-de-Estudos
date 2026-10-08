@@ -5,7 +5,7 @@
 // este módulo cuida do resto: o desenho, o teclado (setas, Enter, Esc) e a
 // semântica de acessibilidade (listbox / option / aria-expanded).
 
-import { esc } from './utils.js';
+import { esc, escAttr } from './utils.js';
 
 const handlers = {}; // cselId -> { onSelect(id), getCategories() }
 
@@ -51,7 +51,8 @@ export function buildCsel(cselId, categories, currentId) {
     const ativa = String(c.id) === String(currentId);
     return `
     <div class="csel-option ${ativa ? 'active' : ''}" role="option" tabindex="-1" aria-selected="${ativa}"
-      onclick="pickCsel('${cselId}', ${c.id}, '${esc(c.name)}', '${c.color}')">
+      data-nome="${escAttr(c.name)}" data-cor="${escAttr(c.color)}"
+      onclick="pickCsel('${cselId}', ${c.id}, this.dataset.nome, this.dataset.cor)">
       <div class="csel-option-dot" style="background:${c.color}"></div>
       ${esc(c.name)}
     </div>`;

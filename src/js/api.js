@@ -59,6 +59,14 @@ export const Api = {
 
   getHeatmap:   (weeks) => request(`/heatmap?weeks=${weeks}`).then(r => r.json()),
 
+  getQuestions:   () => request('/questions').then(r => r.json()),
+  createQuestion: (payload) => request('/questions', { method: 'POST', ...withJson(payload) }),
+  updateQuestion: (id, payload) => request(`/questions/${id}`, { method: 'PUT', ...withJson(payload) }),
+  deleteQuestion: (id) => request(`/questions/${id}`, { method: 'DELETE' }),
+  answerQuestion: (questionId, resposta) => request('/questions/answer', {
+    method: 'POST', ...withJson({ question_id: questionId, resposta }),
+  }),
+
   getTasks:     () => request('/tasks').then(r => r.json()),
   createTask:   (titulo, categoriaId, nota = '') => request('/tasks', {
     method: 'POST', ...withJson({ titulo, categoria_id: categoriaId, nota }),

@@ -6,7 +6,7 @@ import {
   esc, pad, fmtClock, fmtDuration, parseGoal,
   formatarLabels, toLocalDatetimeValue, toUTCIso,
   deslocarReferencia, rotuloPeriodoNavegavel, tooltipDuracao,
-  hexToRgb, blendHex, lerVarCss, somarEmpilhado, contrasteEntre, corLegivel,
+  hexToRgb, blendHex, lerVarCss, somarEmpilhado, contrasteEntre, corLegivel, escAttr,
 } from '../src/js/utils.js';
 
 test('hexToRgb: converte hex de 6 dígitos corretamente', () => {
@@ -278,4 +278,8 @@ test('corLegivel: toda a paleta de matérias (e as cores antigas) fica legível 
   for (const fundo of ['#f8f9fc', '#e8ebf3', '#10121a', '#181b26'])
     for (const c of [...PALETA, ...CORES_ANTIGAS])
       assert.ok(contrasteEntre(corLegivel(c, fundo), fundo) >= 3, `${c} sobre ${fundo}`);
+});
+
+test('escAttr: escapa também as aspas, pra o texto não escapar de um atributo HTML', () => {
+  assert.equal(escAttr('a"b\'c<d>&'), 'a&quot;b&#39;c&lt;d&gt;&amp;');
 });

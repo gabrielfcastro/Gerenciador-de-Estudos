@@ -34,3 +34,11 @@ test('buildCsel: opções têm semântica de lista (role, aria-selected, tabinde
   assert.match(html, /aria-selected="false"/);
   assert.match(html, /tabindex="-1"/);
 });
+
+test('buildCsel: nome com apóstrofo e aspas não quebra o atributo onclick', () => {
+  buildCsel('y-csel', [{ id: 1, name: `D'Água "teste"`, color: '#aaaaaa' }], null);
+  const html = document.getElementById('y-csel-menu').innerHTML;
+  assert.ok(html.includes('data-nome="D&#39;Água &quot;teste&quot;"'), 'o nome vai num atributo data-, escapado');
+  assert.ok(!/onclick="[^"]*D'Água/.test(html), 'o nome não pode entrar cru dentro do JavaScript do onclick');
+  assert.match(html, /onclick="pickCsel\('y-csel', 1, this\.dataset\.nome, this\.dataset\.cor\)"/);
+});

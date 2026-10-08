@@ -1,5 +1,6 @@
 import { loadHeatmap } from './heatmap.js';
 import { atualizarIndicadorConexao } from './conn.js';
+import { Questoes, carregarQuestoes, inicializarQuestoes } from './questoes.js';
 import { ico } from './icons.js';
 import { initCselGlobalClose, initCselKeyboard, toggleCsel, pickCsel } from './csel.js';
 import {
@@ -69,6 +70,7 @@ function switchView(view, btn) {
   btn.classList.add('active');
   if (view === 'kanban')     loadTasks();
   if (view === 'cronograma') loadCronograma();
+  if (view === 'questoes')   carregarQuestoes();
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
@@ -79,6 +81,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   initSessionModals();
   initTaskModals();
   initCronogramaModals();
+  inicializarQuestoes();
 
   await checkConn();
   setInterval(checkConn, 20000);   // avisa se o servidor cair no meio do uso
@@ -92,6 +95,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 Object.assign(window, {
   switchView,
+  Questoes,
   toggleTheme,
   toggleCsel, pickCsel,
   openCatModal, closeCatModal, saveCategory, deleteCat, pickColor,

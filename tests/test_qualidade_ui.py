@@ -16,7 +16,7 @@ CSS = ler("style.css")
 HTML = ler("index.html")
 JS = {os.path.basename(p): open(p, encoding="utf-8").read()
       for p in glob.glob(os.path.join(SRC, "js", "*.js"))
-      if "verificar_frontend" not in p}
+      if "verificar_frontend" not in p and not p.endswith(".test.js")}
 
 
 def sem_comentarios_js(s):
@@ -231,3 +231,39 @@ def test_modo_estudando_e_uma_coluna_centralizada():
 def test_texto_do_chip_e_do_bloco_nao_quebra_linha():
     assert re.search(r"#badge-name\{[^}]*white-space:nowrap", CSS)
     assert 'class="block-text"' in HTML
+
+
+def test_nenhum_arquivo_de_teste_dentro_de_src():
+    # arquivos de teste têm exemplos "ruins" de propósito (ex.: um ícone que não existe);
+    # dentro de src/ eles confundem as checagens e o `node --test` nem chega a rodá-los
+    perdidos = sorted(
+        os.path.relpath(p, SRC)
+        for p in glob.glob(os.path.join(SRC, "**", "*.test.js"), recursive=True)
+        + glob.glob(os.path.join(SRC, "**", "test_*.py"), recursive=True)
+    )
+    assert not perdidos, f"Arquivos de teste no lugar errado (devem ficar em tests/, não em src/): {perdidos}"
+
+
+def test_cabecalho_e_filtros_nao_estouram_em_tela_estreita():
+    # o menu ganhou a 4ª aba; em 420px ele passava da borda e criava rolagem lateral na página inteira
+    blocos = re.findall(r"@media \(max-width: 560px\)\{(.*?)\n\}", CSS, re.S)   # há mais de um bloco com esse limite
+    assert blocos, "faltou o bloco @media (max-width: 560px)"
+    bloco = "\n".join(blocos)
+    assert re.search(r"\.header-nav\{[^}]*overflow-x:auto", bloco)
+    assert re.search(r"\.period-tabs\{[^}]*overflow-x:auto", bloco)
+
+
+def test_campos_do_formulario_limpam_o_erro_ao_serem_editados():
+    for campo, controle in (("enunciado", "qm-enunciado"), ("assunto", "qm-assunto"), ("banca", "qm-banca")):
+        padrao = rf'id="{controle}"[^>]*oninput="Questoes\.editou\(\'{campo}\'\)"'
+        assert re.search(padrao, HTML), f"{controle} não limpa o erro ao digitar"
+
+
+def test_separador_do_assunto_some_em_tela_estreita():
+    blocos = re.findall(r"@media \(max-width: 960px\)\{(.*?)\n\}", CSS, re.S)
+    assert any(".q-assunto::before{display:none}" in b for b in blocos)
+
+
+def test_painel_de_desempenho_fica_acima_dos_filtros():
+    assert 'id="q-painel"' in HTML
+    assert HTML.index('id="q-painel"') < HTML.index('id="q-filtros"')

@@ -12,6 +12,7 @@ from servicos import (
     ServicoSessoes,
     ServicoTarefas,
     ServicoCronograma,
+    ServicoQuestoes,
 )
 
 class Roteador:
@@ -134,6 +135,23 @@ def _criar_roteador():
     r.add("POST",   "/api/tasks/reopen",
           lambda qs, body: ServicoTarefas.reabrir(body["id"]))
 
+    r.add("GET",    "/api/questions",
+          lambda qs, body: ServicoQuestoes.listar())
+    r.add("POST",   "/api/questions",
+          lambda qs, body: ServicoQuestoes.criar(
+              body.get("materia_nome"), body.get("materia_cor"), body.get("assunto", ""), body.get("banca", ""),
+              body["tipo"], body["enunciado"], body.get("alternativas"),
+              body["gabarito"], body.get("justificativa", "")), status=201)
+    r.add("POST",   "/api/questions/answer",
+          lambda qs, body: ServicoQuestoes.responder(body["question_id"], body["resposta"]))
+    r.add("PUT",    "/api/questions/{id}",
+          lambda qs, body, resource_id: ServicoQuestoes.atualizar(
+              resource_id, body.get("materia_nome"), body.get("materia_cor"), body.get("assunto", ""), body.get("banca", ""),
+              body["tipo"], body["enunciado"], body.get("alternativas"),
+              body["gabarito"], body.get("justificativa", "")))
+    r.add("DELETE", "/api/questions/{id}",
+          lambda qs, body, resource_id: ServicoQuestoes.deletar(resource_id))
+
     r.add("GET",    "/api/schedule",
           lambda qs, body: ServicoCronograma.listar())
     r.add("POST",   "/api/schedule",
@@ -233,4 +251,5 @@ if __name__ == "__main__":
         signal.signal(signal.SIGHUP, _encerrar_com_seguranca)
 
     port = 8000
+    print(f"✅ Servidor rodando em http://localhost:{port}")
     HTTPServer(("localhost", port), Handler).serve_forever()

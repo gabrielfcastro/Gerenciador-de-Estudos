@@ -1,4 +1,4 @@
-from database import get_db
+from database import get_db, get_questions_db
 
 def converter_linhas_para_lista(rows):
     return [dict(r) for r in rows]
@@ -426,3 +426,68 @@ class RepositorioCronograma:
                 WHERE s.id=?
             """, (entry_id,)).fetchone()
             return dict(row)
+
+
+class RepositorioQuestoes:
+    """Caderno de questões (arquivo próprio — ver database.py)."""
+
+    _SELECT = """
+        SELECT q.*,
+               (SELECT COUNT(*) FROM question_attempts a WHERE a.question_id = q.id) AS tentativas,
+               (SELECT COALESCE(SUM(a.acertou), 0) FROM question_attempts a WHERE a.question_id = q.id) AS acertos,
+               (SELECT a.acertou FROM question_attempts a WHERE a.question_id = q.id ORDER BY a.id DESC LIMIT 1) AS ultima_acertou
+        FROM questions q
+    """
+
+    @staticmethod
+    def listar():
+        with get_questions_db() as conn:
+            rows = conn.execute(RepositorioQuestoes._SELECT + " ORDER BY q.id DESC").fetchall()
+            return converter_linhas_para_lista(rows)
+
+    @staticmethod
+    def obter(qid):
+        with get_questions_db() as conn:
+            row = conn.execute(RepositorioQuestoes._SELECT + " WHERE q.id = ?", (qid,)).fetchone()
+            return dict(row) if row else None
+
+    @staticmethod
+    def criar(*, materia_nome, materia_cor, assunto, banca, tipo, enunciado, alternativas_json, gabarito, justificativa):
+        with get_questions_db() as conn:
+            cur = conn.execute(
+                "INSERT INTO questions (materia_nome, materia_cor, assunto, banca, tipo, enunciado, alternativas, gabarito, justificativa)"
+                " VALUES (?,?,?,?,?,?,?,?,?)",
+                (materia_nome, materia_cor, assunto, banca, tipo, enunciado, alternativas_json, gabarito, justificativa)
+            )
+            conn.commit()
+            novo_id = cur.lastrowid
+        return RepositorioQuestoes.obter(novo_id)
+
+    @staticmethod
+    def atualizar(qid, *, materia_nome, materia_cor, assunto, banca, tipo, enunciado, alternativas_json, gabarito, justificativa):
+        with get_questions_db() as conn:
+            if not conn.execute("SELECT 1 FROM questions WHERE id = ?", (qid,)).fetchone():
+                return None
+            conn.execute(
+                "UPDATE questions SET materia_nome=?, materia_cor=?, assunto=?, banca=?, tipo=?, enunciado=?,"
+                " alternativas=?, gabarito=?, justificativa=? WHERE id=?",
+                (materia_nome, materia_cor, assunto, banca, tipo, enunciado, alternativas_json, gabarito, justificativa, qid)
+            )
+            conn.commit()
+        return RepositorioQuestoes.obter(qid)
+
+    @staticmethod
+    def deletar(qid):
+        with get_questions_db() as conn:
+            conn.execute("DELETE FROM questions WHERE id = ?", (qid,))
+            conn.commit()
+            return {"ok": True}
+
+    @staticmethod
+    def registrar_tentativa(qid, resposta, acertou):
+        with get_questions_db() as conn:
+            conn.execute(
+                "INSERT INTO question_attempts (question_id, resposta, acertou) VALUES (?,?,?)",
+                (qid, resposta, acertou)
+            )
+            conn.commit()

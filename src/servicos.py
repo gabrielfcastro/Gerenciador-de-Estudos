@@ -1,3 +1,5 @@
+import json
+import re
 from datetime import date, datetime, timedelta, timezone
 from repositorio import (
     RepositorioConfiguracoes,
@@ -5,6 +7,7 @@ from repositorio import (
     RepositorioSessoes,
     RepositorioTarefas,
     RepositorioCronograma,
+    RepositorioQuestoes,
 )
 
 def calcular_duracao(inicio_iso: str, fim_iso: str) -> int:
@@ -207,3 +210,119 @@ class ServicoCronograma:
             raise ValueError("dia da semana inválido")
         res = RepositorioCronograma.mover(entry_id, dia_semana)
         return ServicoCronograma._mapear(res) if res else None
+
+
+class ServicoQuestoes:
+    """Caderno de questões: múltipla escolha (ME, alternativas A–E) ou certo/errado (CE)."""
+
+    LETRAS = "ABCDE"
+    LIMITE_TEXTO_CURTO = 100
+    COR_PADRAO = "#94a3b8"
+
+    @staticmethod
+    def _texto_curto(valor, nome: str) -> str:
+        texto = " ".join(str(valor or "").split())
+        if len(texto) > ServicoQuestoes.LIMITE_TEXTO_CURTO:
+            raise ValueError(f"{nome}: máximo de {ServicoQuestoes.LIMITE_TEXTO_CURTO} caracteres")
+        return texto
+
+    @staticmethod
+    def _cor_segura(cor) -> str:
+        """Só aceita #rrggbb; qualquer outra coisa vira a cor padrão (a cor vai parar num style="")."""
+        cor = str(cor or "").strip()
+        return cor.lower() if re.fullmatch(r"#[0-9a-fA-F]{6}", cor) else ServicoQuestoes.COR_PADRAO
+
+    @staticmethod
+    def _validar(materia_nome, materia_cor, assunto, banca, tipo, enunciado, alternativas, gabarito, justificativa) -> dict:
+        materia = ServicoQuestoes._texto_curto(materia_nome, "matéria")
+        if not materia:
+            raise ValueError("questão precisa estar associada a uma matéria")
+
+        tipo = str(tipo or "").strip().upper()
+        if tipo not in ("ME", "CE"):
+            raise ValueError("tipo deve ser ME (múltipla escolha) ou CE (certo ou errado)")
+
+        enunciado = str(enunciado or "").strip()
+        if not enunciado:
+            raise ValueError("o enunciado é obrigatório")
+
+        gabarito = str(gabarito or "").strip().upper()
+        if tipo == "CE":
+            alts = []
+            if gabarito not in ("C", "E"):
+                raise ValueError("gabarito de certo ou errado deve ser C ou E")
+        else:
+            alts = [str(a or "").strip() for a in (alternativas or [])]
+            while alts and not alts[-1]:
+                alts.pop()
+            if len(alts) < 2:
+                raise ValueError("múltipla escolha precisa de pelo menos 2 alternativas")
+            if len(alts) > len(ServicoQuestoes.LETRAS):
+                raise ValueError(f"máximo de {len(ServicoQuestoes.LETRAS)} alternativas por questão")
+            if any(not a for a in alts):
+                raise ValueError("preencha as alternativas em ordem, sem pular letras")
+            if len(gabarito) != 1 or gabarito not in ServicoQuestoes.LETRAS[:len(alts)]:
+                raise ValueError(f"gabarito deve ser uma letra de A a {ServicoQuestoes.LETRAS[len(alts) - 1]}")
+
+        return dict(
+            materia_nome=materia,
+            materia_cor=ServicoQuestoes._cor_segura(materia_cor),
+            assunto=ServicoQuestoes._texto_curto(assunto, "assunto"),
+            banca=ServicoQuestoes._texto_curto(banca, "banca"),
+            tipo=tipo,
+            enunciado=enunciado,
+            alternativas_json=json.dumps(alts, ensure_ascii=False),
+            gabarito=gabarito,
+            justificativa=str(justificativa or "").strip(),
+        )
+
+    @staticmethod
+    def _mapear(q: dict | None) -> dict | None:
+        if q is None:
+            return None
+        q["alternativas"] = json.loads(q.get("alternativas") or "[]")
+        ultima = q.get("ultima_acertou")
+        q["ultima_acertou"] = None if ultima is None else bool(ultima)
+        q["tentativas"] = int(q.get("tentativas") or 0)
+        q["acertos"] = int(q.get("acertos") or 0)
+        return q
+
+    @staticmethod
+    def listar() -> list:
+        return [ServicoQuestoes._mapear(q) for q in RepositorioQuestoes.listar()]
+
+    @staticmethod
+    def criar(materia_nome, materia_cor, assunto, banca, tipo, enunciado, alternativas, gabarito, justificativa) -> dict:
+        dados = ServicoQuestoes._validar(materia_nome, materia_cor, assunto, banca, tipo, enunciado, alternativas, gabarito, justificativa)
+        return ServicoQuestoes._mapear(RepositorioQuestoes.criar(**dados))
+
+    @staticmethod
+    def atualizar(qid, materia_nome, materia_cor, assunto, banca, tipo, enunciado, alternativas, gabarito, justificativa) -> dict | None:
+        dados = ServicoQuestoes._validar(materia_nome, materia_cor, assunto, banca, tipo, enunciado, alternativas, gabarito, justificativa)
+        return ServicoQuestoes._mapear(RepositorioQuestoes.atualizar(qid, **dados))
+
+    @staticmethod
+    def deletar(qid) -> dict:
+        return RepositorioQuestoes.deletar(qid)
+
+    @staticmethod
+    def responder(qid, resposta) -> dict | None:
+        """Corrige no servidor (fonte única da verdade) e registra a tentativa."""
+        q = RepositorioQuestoes.obter(qid)
+        if q is None:
+            return None
+        letras = "CE" if q["tipo"] == "CE" else ServicoQuestoes.LETRAS[:len(json.loads(q["alternativas"] or "[]"))]
+        resposta = str(resposta or "").strip().upper()
+        if len(resposta) != 1 or resposta not in letras:
+            raise ValueError(f"resposta inválida: use uma destas letras: {', '.join(letras)}")
+
+        acertou = resposta == q["gabarito"]
+        RepositorioQuestoes.registrar_tentativa(qid, resposta, 1 if acertou else 0)
+        atual = RepositorioQuestoes.obter(qid)
+        return {
+            "acertou": acertou,
+            "gabarito": q["gabarito"],
+            "justificativa": q["justificativa"],
+            "tentativas": int(atual["tentativas"]),
+            "acertos": int(atual["acertos"]),
+        }
