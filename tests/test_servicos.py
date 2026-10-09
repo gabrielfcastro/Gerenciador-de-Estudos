@@ -520,7 +520,8 @@ class TestServicoQuestoes:
 
     ROW = {"id": 1, "materia_nome": "Dir", "materia_cor": "#ffffff", "assunto": "A", "banca": "FCC", "tipo": "ME",
            "enunciado": "e", "alternativas": '["x", "y"]', "gabarito": "B", "justificativa": "", "criada_em": "2026-01-01",
-           "tentativas": 2, "acertos": 1, "ultima_acertou": 1}
+           "tentativas": 2, "acertos": 1, "ultima_acertou": 1,
+           "acertos_seguidos": 2, "ultima_respondida_em": "2026-01-02 12:00:00"}
 
     def _criar(self, repo, **kw):
         from servicos import ServicoQuestoes
@@ -640,3 +641,18 @@ class TestServicoQuestoes:
             with pytest.raises(ValueError, match="resposta"):
                 ServicoQuestoes.responder(1, resposta)
             assert not repo.registrar_tentativa.called
+
+    def test_mapeia_os_campos_da_revisao_espacada(self):
+        from servicos import ServicoQuestoes
+        with patch("servicos.RepositorioQuestoes") as repo:
+            repo.listar.return_value = [dict(self.ROW), {**self.ROW, "acertos_seguidos": None, "ultima_respondida_em": None}]
+            a, b = ServicoQuestoes.listar()
+            assert a["acertos_seguidos"] == 2 and a["ultima_respondida_em"] == "2026-01-02 12:00:00"
+            assert b["acertos_seguidos"] == 0 and b["ultima_respondida_em"] is None
+
+    def test_responder_devolve_os_acertos_seguidos_e_a_data_pro_frontend_atualizar(self):
+        from servicos import ServicoQuestoes
+        with patch("servicos.RepositorioQuestoes") as repo:
+            repo.obter.side_effect = [dict(self.ROW), {**self.ROW, "acertos_seguidos": 3, "ultima_respondida_em": "2026-02-03 08:00:00"}]
+            res = ServicoQuestoes.responder(1, "B")
+            assert res["acertos_seguidos"] == 3 and res["ultima_respondida_em"] == "2026-02-03 08:00:00"

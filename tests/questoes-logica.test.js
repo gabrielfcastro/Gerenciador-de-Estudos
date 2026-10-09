@@ -1,409 +1,657 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import * as L from '../src/js/questoes-logica.js';
 
-const Q = (o = {}) => ({
-  id: 1, materia_nome: 'Dir. Financeiro', materia_cor: '#d4537e', assunto: 'Restos a pagar',
-  banca: 'FCC', tipo: 'ME', enunciado: 'Qual alternativa está correta?', alternativas: ['a', 'b', 'c'], gabarito: 'B',
-  justificativa: '', tentativas: 0, acertos: 0, ultima_acertou: null, ...o,
+// ── DOM falso: o bastante pra rodar o app sem navegador ─────────────────────
+class El {
+  constructor(tag = 'div') {
+    this.tag = tag; this.attrs = {}; this.children = []; this.listeners = {}; this.className = '';
+    this.innerHTML = ''; this.textContent = ''; this.value = ''; this.checked = false; this.hidden = false;
+    this.style = {}; this.parent = null; this._cls = new Set();
+    this.classList = {
+      add: (c) => this._cls.add(c), remove: (c) => this._cls.delete(c), contains: (c) => this._cls.has(c),
+      toggle: (c, f) => { (f === undefined ? !this._cls.has(c) : f) ? this._cls.add(c) : this._cls.delete(c); },
+    };
+  }
+  setAttribute(k, v) { this.attrs[k] = String(v); }
+  getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; }
+  appendChild(c) { c.parent = this; this.children.push(c); return c; }
+  remove() { if (this.parent) this.parent.children = this.parent.children.filter(x => x !== this); }
+  addEventListener(t, f) { (this.listeners[t] ||= []).push(f); }
+  removeEventListener(t, f) { this.listeners[t] = (this.listeners[t] || []).filter(x => x !== f); }
+  click() { (this.listeners.click || []).slice().forEach(f => f({ target: this })); }
+  focus() { document.activeElement = this; }
+  closest() { return null; }
+  querySelector() { return null; }
+  querySelectorAll() { return []; }
+}
+const registro = new Map(); const criados = []; const docListeners = {};
+globalThis.document = {
+  activeElement: null, body: new El('body'), documentElement: new El('html'),
+  getElementById(id) { if (!registro.has(id)) registro.set(id, new El()); return registro.get(id); },
+  createElement(tag) { const e = new El(tag); criados.push(e); return e; },
+  querySelectorAll: () => [],
+  addEventListener(t, f) { (docListeners[t] ||= []).push(f); },
+  removeEventListener(t, f) { docListeners[t] = (docListeners[t] || []).filter(x => x !== f); },
+};
+globalThis.window = { addEventListener() {} };
+const el = (id) => document.getElementById(id);
+
+// ── servidor falso, com as mesmas regras do de verdade ───────────────────────
+const CATS = [{ id: 1, name: 'Dir. Financeiro', color: '#d4537e' }, { id: 2, name: 'Contabilidade', color: '#1d9e75' }];
+const Qs = (o = {}) => ({
+  id: 1, materia_nome: 'Dir. Financeiro', materia_cor: '#d4537e', assunto: 'Restos a pagar', banca: 'FCC',
+  tipo: 'ME', enunciado: 'Qual está certa?', alternativas: ['um', 'dois', 'tres'], gabarito: 'B', justificativa: 'Porque sim.',
+  tentativas: 0, acertos: 0, ultima_acertou: null, ...o,
 });
-const F = (o = {}) => ({ ...L.FILTRO_VAZIO, ...o });
+let servidor;
+function novoServidor(questoes = []) { servidor = { questoes: questoes.map(q => ({ ...q })), chamadas: [], erro: null, proximoId: 100 }; }
+const chamadas = (metodo, caminho) => servidor.chamadas.filter(c => c.metodo === metodo && c.caminho === caminho);
+globalThis.fetch = async (url, opts = {}) => {
+  const metodo = opts.method || 'GET', caminho = url.replace('http://localhost:8000/api', '');
+  const corpo = opts.body ? JSON.parse(opts.body) : null;
+  servidor.chamadas.push({ metodo, caminho, corpo });
+  const r = (status, dados) => ({ ok: status < 400, status, json: async () => dados });
+  if (caminho === '/categories') return r(200, CATS);
+  if (caminho === '/questions' && metodo === 'GET') return r(200, servidor.questoes);
+  if (caminho === '/questions' && metodo === 'POST') {
+    if (servidor.erro) return r(422, { error: servidor.erro });
+    const nova = Qs({ ...corpo, id: servidor.proximoId++ });
+    servidor.questoes.unshift(nova); return r(201, nova);
+  }
+  if (caminho === '/questions/answer') {
+    const q = servidor.questoes.find(x => x.id === corpo.question_id);
+    const acertou = q.gabarito === corpo.resposta;
+    q.tentativas += 1; q.acertos += acertou ? 1 : 0; q.ultima_acertou = acertou;
+    q.acertos_seguidos = acertou ? (q.acertos_seguidos || 0) + 1 : 0;
+    q.ultima_respondida_em = servidor.agora || new Date().toISOString().slice(0, 19).replace('T', ' ');
+    return r(200, { acertou, gabarito: q.gabarito, justificativa: q.justificativa, tentativas: q.tentativas, acertos: q.acertos,
+                    acertos_seguidos: q.acertos_seguidos, ultima_respondida_em: q.ultima_respondida_em });
+  }
+  const m = caminho.match(/^\/questions\/(\d+)$/);
+  if (m && metodo === 'PUT') { const q = servidor.questoes.find(x => x.id === Number(m[1])); Object.assign(q, corpo); return r(200, q); }
+  if (m && metodo === 'DELETE') { servidor.questoes = servidor.questoes.filter(x => x.id !== Number(m[1])); return r(200, { ok: true }); }
+  return r(200, {});
+};
 
-// ── filtros ────────────────────────────────────────────────────────────────
-test('normalizar: ignora acento, caixa e espaços nas pontas', () => {
-  assert.equal(L.normalizar('  Não CUMULATIVIDADE '), 'nao cumulatividade');
-});
+const { loadCategories } = await import('../src/js/categories.js');
+const csel = await import('../src/js/csel.js');
+const { Questoes, carregarQuestoes, inicializarQuestoes } = await import('../src/js/questoes.js');
+novoServidor();            // o servidor falso precisa existir antes de carregar as matérias
+await loadCategories();
+inicializarQuestoes();
 
-test('passaFiltro: sem filtro nenhum, toda questão passa', () => {
-  assert.equal(L.passaFiltro(Q(), F()), true);
-});
+async function iniciar(questoes) {
+  novoServidor(questoes);
+  Questoes.limpar();
+  el('q-tela-lista').hidden = false; el('q-tela-refazer').hidden = true;
+  await carregarQuestoes();
+}
+const confirmarNoModal = (aceitar) => {
+  const botoes = criados.slice().reverse();
+  botoes.find(b => b.className.includes(aceitar ? 'btn-confirmar' : 'btn-cancelar')).click();
+};
+const ultimoToast = () => { const c = el('toast-root').children; return c[c.length - 1]; };
+const linhas = () => (el('q-resultado').innerHTML.match(/class="q-linha"/g) || []).length;
+const MUITAS = (n) => Array.from({ length: n }, (_, i) => Qs({ id: i + 1, enunciado: `Questão número ${i + 1}` }));
 
-test('passaFiltro: matéria, assunto, banca e tipo', () => {
-  assert.equal(L.passaFiltro(Q(), F({ materia: 'Dir. Financeiro' })), true);
-  assert.equal(L.passaFiltro(Q(), F({ materia: 'Contabilidade' })), false);
-  assert.equal(L.passaFiltro(Q(), F({ assunto: 'Restos a pagar' })), true);
-  assert.equal(L.passaFiltro(Q(), F({ assunto: 'Outro' })), false);
-  assert.equal(L.passaFiltro(Q(), F({ banca: 'FGV' })), false);
-  assert.equal(L.passaFiltro(Q(), F({ tipo: 'CE' })), false);
-  assert.equal(L.passaFiltro(Q({ tipo: 'CE' }), F({ tipo: 'CE' })), true);
-});
-
-test('passaFiltro: "só as que errei" exige a última tentativa errada', () => {
-  assert.equal(L.passaFiltro(Q({ ultima_acertou: false }), F({ situacao: 'revisar' })), true);
-  assert.equal(L.passaFiltro(Q({ ultima_acertou: true }), F({ situacao: 'revisar' })), false);
-  assert.equal(L.passaFiltro(Q({ ultima_acertou: null }), F({ situacao: 'revisar' })), false);
-});
-
-test('passaFiltro: busca no enunciado ignora acento e caixa', () => {
-  const q = Q({ enunciado: 'A não cumulatividade do ICMS' });
-  assert.equal(L.passaFiltro(q, F({ busca: 'NAO CUMULATIV' })), true);
-  assert.equal(L.passaFiltro(q, F({ busca: 'IPI' })), false);
-});
-
-test('passaFiltro: "ignorar" desliga só aquele filtro', () => {
-  assert.equal(L.passaFiltro(Q(), F({ banca: 'FGV' }), 'banca'), true);
-  assert.equal(L.passaFiltro(Q(), F({ banca: 'FGV', assunto: 'X' }), 'banca'), false);
-});
-
-test('filtrar: devolve só as que passam, na mesma ordem', () => {
-  const lista = [Q({ id: 1 }), Q({ id: 2, banca: 'FGV' }), Q({ id: 3 })];
-  assert.deepEqual(L.filtrar(lista, F({ banca: 'FCC' })).map(q => q.id), [1, 3]);
-});
-
-// ── opções com contagem ────────────────────────────────────────────────────
-const LISTA = [
-  Q({ id: 1, materia_nome: 'Dir. Financeiro', assunto: 'Restos a pagar', banca: 'FCC' }),
-  Q({ id: 2, materia_nome: 'Dir. Financeiro', assunto: 'Créditos adicionais', banca: 'FGV' }),
-  Q({ id: 3, materia_nome: 'Contabilidade', assunto: 'Depreciação', banca: 'FCC', tipo: 'CE', alternativas: [], gabarito: 'C' }),
-  Q({ id: 4, materia_nome: 'Contabilidade', assunto: '', banca: '' }),
-];
-
-test('opcoesDoFiltro: lista os valores com a contagem, em ordem alfabética', () => {
-  const o = L.opcoesDoFiltro(LISTA, F(), 'banca');
-  assert.deepEqual(o.opcoes.map(x => [x.rotulo, x.n]), [['FCC', 2], ['FGV', 1]]);
-  assert.equal(o.total, 4);
-});
-
-test('opcoesDoFiltro: assunto e banca vazios não viram opção', () => {
-  const o = L.opcoesDoFiltro(LISTA, F(), 'assunto');
-  assert.equal(o.opcoes.length, 3);
-  assert.ok(o.opcoes.every(x => x.rotulo));
-});
-
-test('opcoesDoFiltro: a matéria é identificada pelo nome', () => {
-  const o = L.opcoesDoFiltro(LISTA, F(), 'materia');
-  assert.deepEqual(o.opcoes.map(x => [x.valor, x.rotulo, x.n]), [['Contabilidade', 'Contabilidade', 2], ['Dir. Financeiro', 'Dir. Financeiro', 2]]);
-});
-
-test('opcoesDoFiltro: as contagens respeitam os OUTROS filtros (nunca leva a tela vazia)', () => {
-  const o = L.opcoesDoFiltro(LISTA, F({ materia: 'Dir. Financeiro' }), 'assunto');
-  assert.deepEqual(o.opcoes.map(x => x.rotulo), ['Créditos adicionais', 'Restos a pagar']);
-});
-
-test('opcoesDoFiltro: o filtro escolhido continua na lista mesmo com 0 resultados', () => {
-  const o = L.opcoesDoFiltro(LISTA, F({ materia: 'Dir. Financeiro', assunto: 'Depreciação' }), 'assunto');
-  assert.ok(o.opcoes.some(x => x.rotulo === 'Depreciação' && x.n === 0));
-});
-
-test('sanearFiltros: zera o assunto que não existe na matéria recém escolhida', () => {
-  const r = L.sanearFiltros(LISTA, F({ materia: 'Dir. Financeiro', assunto: 'Depreciação' }));
-  assert.equal(r.assunto, '');
-  assert.equal(r.materia, 'Dir. Financeiro');
-});
-
-test('sanearFiltros: mantém filtros que ainda têm resultado', () => {
-  const f = F({ materia: 'Dir. Financeiro', assunto: 'Restos a pagar', banca: 'FCC' });
-  assert.deepEqual(L.sanearFiltros(LISTA, f), f);
-});
-
-test('sanearFiltros: não muda o objeto original', () => {
-  const f = F({ materia: 'Dir. Financeiro', assunto: 'Depreciação' });
-  L.sanearFiltros(LISTA, f);
-  assert.equal(f.assunto, 'Depreciação');
-});
-
-test('contarPorTipo: respeita os demais filtros', () => {
-  assert.deepEqual(L.contarPorTipo(LISTA, F()), { todos: 4, ME: 3, CE: 1 });
-  assert.deepEqual(L.contarPorTipo(LISTA, F({ materia: 'Dir. Financeiro' })), { todos: 2, ME: 2, CE: 0 });
+// ── lista e filtros ─────────────────────────────────────────────────────────
+test('carregar: desenha as questões e mostra o painel de filtros', async () => {
+  await iniciar([Qs({ id: 1, enunciado: 'Primeiro enunciado' }), Qs({ id: 2, enunciado: 'Segundo enunciado' })]);
+  assert.match(el('q-resultado').innerHTML, /Primeiro enunciado/);
+  assert.equal(linhas(), 2);
+  assert.equal(el('q-filtros').hidden, false);
+  assert.match(el('q-acoes-topo').innerHTML, /aria-label="Resolver 2 questões"/);
 });
 
-test('temFiltroAtivo', () => {
-  assert.equal(L.temFiltroAtivo(F()), false);
-  assert.equal(L.temFiltroAtivo(F({ situacao: 'revisar' })), true);
-  assert.equal(L.temFiltroAtivo(F({ busca: 'x' })), true);
-  assert.equal(L.temFiltroAtivo(F({ tipo: 'CE' })), true);
+test('caderno vazio: mostra o convite e esconde os filtros', async () => {
+  await iniciar([]);
+  assert.match(el('q-resultado').innerHTML, /Seu caderno está vazio/);
+  assert.equal(el('q-filtros').hidden, true);
+  assert.ok(!el('q-acoes-topo').innerHTML.includes('Refazer'));
 });
 
-// ── resumo, status e utilidades ────────────────────────────────────────────
-test('resumoDesempenho: soma tentativas e acertos e calcula o percentual', () => {
-  const r = L.resumoDesempenho([Q({ tentativas: 3, acertos: 1 }), Q({ tentativas: 1, acertos: 1 })]);
-  assert.deepEqual(r, { tentativas: 4, acertos: 2, percentual: 50 });
+test('filtro por matéria reduz a lista e as opções de assunto', async () => {
+  await iniciar([Qs({ id: 1, materia_nome: 'Dir. Financeiro', assunto: 'Restos a pagar' }), Qs({ id: 2, materia_nome: 'Contabilidade', assunto: 'Depreciação' })]);
+  Questoes.filtro('materia', 'Contabilidade');
+  assert.equal(linhas(), 1);
+  assert.match(el('qf-assunto').innerHTML, /Depreciação/);
+  assert.ok(!el('qf-assunto').innerHTML.includes('Restos a pagar'));
 });
 
-test('resumoDesempenho: sem tentativas não inventa percentual', () => {
-  assert.deepEqual(L.resumoDesempenho([Q()]), { tentativas: 0, acertos: 0, percentual: null });
+test('trocar de matéria some com o assunto que não existe nela', async () => {
+  await iniciar([Qs({ id: 1, materia_nome: 'Dir. Financeiro', assunto: 'Restos a pagar' }), Qs({ id: 2, materia_nome: 'Contabilidade', assunto: 'Depreciação' })]);
+  Questoes.filtro('materia', 'Dir. Financeiro'); Questoes.filtro('assunto', 'Restos a pagar');
+  Questoes.filtro('materia', 'Contabilidade');
+  assert.match(el('q-resultado').innerHTML, /Depreciação/);
 });
 
-test('textoStatus: três situações', () => {
-  assert.equal(L.textoStatus(Q()), 'Ainda não refeita');
-  assert.equal(L.textoStatus(Q({ tentativas: 1, ultima_acertou: true })), 'Acertou na última · 1 tentativa');
-  assert.equal(L.textoStatus(Q({ tentativas: 3, ultima_acertou: false })), 'Errou na última · 3 tentativas');
+test('sem resultados: mostra o aviso e "limpar" traz tudo de volta', async () => {
+  await iniciar([Qs({ id: 1 }), Qs({ id: 2 })]);
+  Questoes.buscar('texto que não existe');
+  assert.match(el('q-resultado').innerHTML, /Nenhuma questão com esses filtros/);
+  assert.equal(el('qf-limpar').hidden, false);
+  Questoes.limpar();
+  assert.equal(linhas(), 2);
+  assert.equal(el('qf-limpar').hidden, true);
+  assert.equal(el('qf-busca').value, '');
 });
 
-test('rotuloTipo', () => {
-  assert.equal(L.rotuloTipo('ME'), 'Múltipla escolha');
-  assert.equal(L.rotuloTipo('CE'), 'Certo ou errado');
+test('"só as que errei" mostra apenas as com última tentativa errada', async () => {
+  await iniciar([Qs({ id: 1, ultima_acertou: false, tentativas: 1 }), Qs({ id: 2, ultima_acertou: true, tentativas: 1 }), Qs({ id: 3 })]);
+  Questoes.somenteErradas(true);
+  assert.equal(linhas(), 1);
 });
 
-test('embaralhar: não muda a lista original e mantém os mesmos elementos', () => {
-  const original = [1, 2, 3, 4, 5];
-  const r = L.embaralhar(original, () => 0.3);
-  assert.deepEqual(original, [1, 2, 3, 4, 5]);
-  assert.deepEqual([...r].sort(), [1, 2, 3, 4, 5]);
+test('filtro de tipo', async () => {
+  await iniciar([Qs({ id: 1 }), Qs({ id: 2, tipo: 'CE', alternativas: [], gabarito: 'C' })]);
+  Questoes.tipo('CE');
+  assert.equal(linhas(), 1);
 });
 
-test('embaralhar: com o mesmo sorteio dá sempre a mesma ordem', () => {
-  const a = L.embaralhar([1, 2, 3, 4, 5], () => 0.7);
-  const b = L.embaralhar([1, 2, 3, 4, 5], () => 0.7);
-  assert.deepEqual(a, b);
+test('paginação: mostra 30 e libera mais sob demanda', async () => {
+  await iniciar(MUITAS(35));
+  assert.equal((el('q-resultado').innerHTML.match(/class="q-linha"/g) || []).length, 30);
+  assert.match(el('q-resultado').innerHTML, /Mostrar mais \(5\)/);
+  Questoes.mostrarMais();
+  assert.equal((el('q-resultado').innerHTML.match(/class="q-linha"/g) || []).length, 35);
+  assert.ok(!el('q-resultado').innerHTML.includes('Mostrar mais'));
 });
 
-// ── formulário ─────────────────────────────────────────────────────────────
-const FORM = (o = {}) => ({ materia_nome: 'Dir. Financeiro', materia_cor: '#d4537e', tipo: 'ME', enunciado: 'Texto', alternativas: ['a', 'b', 'c', '', ''], gabarito: 'B', assunto: '', banca: '', justificativa: '', ...o });
-
-test('validarFormulario: formulário completo é válido', () => {
-  assert.deepEqual(L.validarFormulario(FORM()), { ok: true, erros: {} });
+// ── modo refazer ────────────────────────────────────────────────────────────
+test('refazer: abre a rodada só com as questões filtradas', async () => {
+  await iniciar([Qs({ id: 1, banca: 'FCC' }), Qs({ id: 2, banca: 'FGV' })]);
+  Questoes.filtro('banca', 'FGV');
+  Questoes.iniciarRefazer();
+  assert.equal(el('q-tela-lista').hidden, true);
+  assert.equal(el('q-tela-refazer').hidden, false);
+  assert.match(el('q-tela-refazer').innerHTML, /Questão 1 de 1/);
 });
 
-test('validarFormulario: matéria e enunciado são obrigatórios', () => {
-  const r = L.validarFormulario(FORM({ materia_nome: '  ', enunciado: '   ' }));
-  assert.equal(r.ok, false);
-  assert.ok(r.erros.materia && r.erros.enunciado);
+test('refazer: sem questões nos filtros, avisa e não abre', async () => {
+  await iniciar([Qs({ id: 1 })]);
+  Questoes.buscar('nada');
+  Questoes.iniciarRefazer();
+  assert.equal(el('q-tela-refazer').hidden, true);
+  assert.match(ultimoToast().textContent, /Nenhuma questão/);
 });
 
-test('validarFormulario: múltipla escolha precisa de 2 alternativas, sem pular letra', () => {
-  assert.ok(L.validarFormulario(FORM({ alternativas: ['a', '', '', '', ''] })).erros.alternativas);
-  assert.match(L.validarFormulario(FORM({ alternativas: ['a', '', 'c', '', ''] })).erros.alternativas, /em ordem/);
+test('tesoura: riscar uma alternativa a deixa tachada e impede de marcar', async () => {
+  await iniciar([Qs()]);
+  Questoes.iniciarRefazer();
+  Questoes.cortar(1);
+  assert.match(el('q-tela-refazer').innerHTML, /q-alt cortada/);
+  Questoes.marcar(1);
+  assert.ok(!el('q-tela-refazer').innerHTML.includes('q-alt marcada'));
+  Questoes.cortar(1);
+  assert.ok(!el('q-tela-refazer').innerHTML.includes('q-alt cortada'));
 });
 
-test('validarFormulario: múltipla escolha exige gabarito dentro das alternativas preenchidas', () => {
-  assert.ok(L.validarFormulario(FORM({ gabarito: '' })).erros.gabarito);
-  assert.ok(L.validarFormulario(FORM({ gabarito: 'D' })).erros.gabarito);
+test('responder sem marcar: mostra o aviso e NÃO chama o servidor', async () => {
+  await iniciar([Qs()]);
+  Questoes.iniciarRefazer();
+  await Questoes.responder();
+  assert.match(el('q-tela-refazer').innerHTML, /Escolha uma alternativa antes de responder/);
+  assert.equal(chamadas('POST', '/questions/answer').length, 0);
 });
 
-test('validarFormulario: certo ou errado não olha as alternativas e exige C ou E', () => {
-  assert.equal(L.validarFormulario(FORM({ tipo: 'CE', alternativas: ['', '', '', '', ''], gabarito: 'C' })).ok, true);
-  assert.ok(L.validarFormulario(FORM({ tipo: 'CE', gabarito: 'B' })).erros.gabarito);
+test('responder certo: corrige no servidor e mostra a justificativa', async () => {
+  await iniciar([Qs()]);
+  Questoes.iniciarRefazer();
+  Questoes.marcar(1);
+  await Questoes.responder();
+  const [c] = chamadas('POST', '/questions/answer');
+  assert.deepEqual(c.corpo, { question_id: 1, resposta: 'B' });
+  assert.match(el('q-tela-refazer').innerHTML, /Você acertou/);
+  assert.match(el('q-tela-refazer').innerHTML, /Porque sim\./);
 });
 
-test('validarFormulario: assunto e banca têm limite de 100 caracteres', () => {
-  const r = L.validarFormulario(FORM({ assunto: 'x'.repeat(101), banca: 'y'.repeat(101) }));
-  assert.ok(r.erros.assunto && r.erros.banca);
+test('responder errado: mostra o gabarito e conta o erro', async () => {
+  await iniciar([Qs()]);
+  Questoes.iniciarRefazer();
+  Questoes.marcar(0);
+  await Questoes.responder();
+  assert.match(el('q-tela-refazer').innerHTML, /Você errou\. O gabarito é B\./);
+  assert.match(el('q-tela-refazer').innerHTML, /0 acertos · 1 erro/);
 });
 
-test('montarPayload: tira vazias do fim, apara espaços e zera alternativas no certo/errado', () => {
-  const p = L.montarPayload(FORM({ alternativas: [' a ', 'b', 'c', '', ''], assunto: ' Restos ', banca: ' fcc ', justificativa: ' j ' }));
-  assert.deepEqual(p.alternativas, ['a', 'b', 'c']);
-  assert.equal(p.assunto, 'Restos'); assert.equal(p.banca, 'fcc'); assert.equal(p.justificativa, 'j');
-  assert.deepEqual(L.montarPayload(FORM({ tipo: 'CE', gabarito: 'C' })).alternativas, []);
+test('responder duas vezes seguidas só registra uma tentativa', async () => {
+  await iniciar([Qs()]);
+  Questoes.iniciarRefazer();
+  Questoes.marcar(1);
+  await Promise.all([Questoes.responder(), Questoes.responder()]);
+  assert.equal(chamadas('POST', '/questions/answer').length, 1);
 });
 
-// ── mecânica do modo refazer (tesoura, marcar, responder) ──────────────────
-const FILA = [Q({ id: 10 }), Q({ id: 11, tipo: 'CE', alternativas: [], gabarito: 'C' })];
-
-test('estadoInicialRefazer: começa na primeira questão, sem corte e sem marcação', () => {
-  const e = L.estadoInicialRefazer(FILA);
-  assert.equal(e.indice, 0);
-  assert.deepEqual(e.cortadas, []);
-  assert.equal(e.marcada, null);
-  assert.equal(e.respondida, false);
-  assert.deepEqual([e.acertos, e.erros], [0, 0]);
+test('responder com o servidor recusando: avisa e mantém a questão aberta', async () => {
+  await iniciar([Qs()]);
+  Questoes.iniciarRefazer();
+  Questoes.marcar(1);
+  const original = globalThis.fetch;
+  globalThis.fetch = async (url, o) => (url.endsWith('/questions/answer')
+    ? { ok: false, status: 404, json: async () => ({ error: 'questão não encontrada' }) } : original(url, o));
+  try { await Questoes.responder(); } finally { globalThis.fetch = original; }
+  assert.match(ultimoToast().textContent, /não encontrada/);
+  assert.ok(!el('q-tela-refazer').innerHTML.includes('Você acertou'));
 });
 
-test('alternarCorte: risca e restaura', () => {
-  let e = L.estadoInicialRefazer(FILA);
-  e = L.alternarCorte(e, 2);
-  assert.deepEqual(e.cortadas, [2]);
-  e = L.alternarCorte(e, 2);
-  assert.deepEqual(e.cortadas, []);
+test('rodada completa: próxima, fim, e refazer só as erradas', async () => {
+  await iniciar([Qs({ id: 1 }), Qs({ id: 2, enunciado: 'Segunda' })]);   // as duas têm gabarito B
+  Questoes.iniciarRefazer();
+  Questoes.marcar(1); await Questoes.responder(); Questoes.proxima();    // acerta a primeira (qualquer que seja a ordem)
+  Questoes.marcar(0); await Questoes.responder(); Questoes.proxima();    // erra a segunda
+  assert.match(el('q-tela-refazer').innerHTML, /Fim da rodada/);
+  assert.match(el('q-tela-refazer').innerHTML, /Refazer as erradas \(1\)/);
+  Questoes.refazerErradas();
+  assert.match(el('q-tela-refazer').innerHTML, /Questão 1 de 1/);
 });
 
-test('alternarCorte: riscar a alternativa marcada tira a marcação', () => {
-  let e = L.marcarAlternativa(L.estadoInicialRefazer(FILA), 1);
-  e = L.alternarCorte(e, 1);
-  assert.equal(e.marcada, null);
+test('sair do modo refazer volta pra lista e recarrega do servidor', async () => {
+  await iniciar([Qs()]);
+  Questoes.iniciarRefazer();
+  const antes = chamadas('GET', '/questions').length;
+  await Questoes.sair();
+  assert.equal(el('q-tela-lista').hidden, false);
+  assert.equal(el('q-tela-refazer').hidden, true);
+  assert.equal(chamadas('GET', '/questions').length, antes + 1);
 });
 
-test('alternarCorte: não corta depois de responder, nem em certo/errado', () => {
-  const respondida = { ...L.estadoInicialRefazer(FILA), respondida: true };
-  assert.deepEqual(L.alternarCorte(respondida, 0).cortadas, []);
-  const ce = { ...L.estadoInicialRefazer(FILA), indice: 1 };
-  assert.deepEqual(L.alternarCorte(ce, 0).cortadas, []);
+// ── formulário ──────────────────────────────────────────────────────────────
+function preencherValido() {
+  csel.pickCsel('q-csel', 1, 'Dir. Financeiro', '#d4537e');
+  el('qm-enunciado').value = '  Qual é a correta?  ';
+  el('qm-assunto').value = ' Restos a pagar '; el('qm-banca').value = 'FCC'; el('qm-justificativa').value = 'Porque sim';
+  ['  um ', 'dois', 'tres', '', ''].forEach((v, i) => { el('qm-alt-' + i).value = v; });
+  Questoes.marcarGabarito('B');
+}
+
+test('abrir o formulário novo: título, modal aberto e sem botão de excluir', async () => {
+  await iniciar([Qs()]);
+  Questoes.abrirNovo();
+  assert.equal(el('qm-titulo').textContent, 'Nova questão');
+  assert.ok(el('q-form-modal').classList.contains('open'));
+  assert.equal(el('qm-excluir').hidden, true);
+  assert.equal(el('qm-salvar-outra').hidden, false);
 });
 
-test('marcarAlternativa: alternativa riscada não pode ser marcada', () => {
-  let e = L.alternarCorte(L.estadoInicialRefazer(FILA), 0);
-  e = L.marcarAlternativa(e, 0);
-  assert.equal(e.marcada, null);
+test('salvar vazio: mostra os erros nos campos e NÃO chama o servidor', async () => {
+  await iniciar([Qs()]);
+  Questoes.abrirNovo();
+  el('qm-enunciado').value = '';
+  await Questoes.salvar();
+  assert.equal(el('qm-erro-enunciado').textContent, 'Escreva o enunciado.');
+  assert.equal(el('qm-erro-materia').textContent, 'Escolha uma matéria.');
+  assert.equal(chamadas('POST', '/questions').length, 0);
+  assert.ok(el('q-form-modal').classList.contains('open'));
 });
 
-test('marcarAlternativa: não troca a marcação depois de responder', () => {
-  const e = { ...L.marcarAlternativa(L.estadoInicialRefazer(FILA), 1), respondida: true };
-  assert.equal(L.marcarAlternativa(e, 2).marcada, 1);
+test('salvar válido: manda o payload limpo, fecha e recarrega a lista', async () => {
+  await iniciar([]);
+  Questoes.abrirNovo();
+  preencherValido();
+  await Questoes.salvar();
+  const [c] = chamadas('POST', '/questions');
+  assert.deepEqual(c.corpo, { materia_nome: 'Dir. Financeiro', materia_cor: '#d4537e', assunto: 'Restos a pagar', banca: 'FCC', tipo: 'ME', enunciado: 'Qual é a correta?',
+    alternativas: ['um', 'dois', 'tres'], gabarito: 'B', justificativa: 'Porque sim' });
+  assert.ok(!el('q-form-modal').classList.contains('open'));
+  assert.match(el('q-resultado').innerHTML, /Qual é a correta\?/);
+  assert.match(ultimoToast().textContent, /salva/);
 });
 
-test('respostaMarcada: devolve a letra (ME) ou C/E (certo ou errado)', () => {
-  let e = L.marcarAlternativa(L.estadoInicialRefazer(FILA), 2);
-  assert.equal(L.respostaMarcada(e), 'C');
-  e = L.marcarAlternativa({ ...L.estadoInicialRefazer(FILA), indice: 1 }, 1);
-  assert.equal(L.respostaMarcada(e), 'E');
-  assert.equal(L.respostaMarcada(L.estadoInicialRefazer(FILA)), null);
+test('certo ou errado: não manda alternativas e exige o gabarito', async () => {
+  await iniciar([]);
+  Questoes.abrirNovo();
+  csel.pickCsel('q-csel', 1, 'Dir. Financeiro', '#d4537e');
+  Questoes.definirTipo('CE');
+  el('qm-enunciado').value = 'Julgue o item.';
+  await Questoes.salvar();
+  assert.match(el('qm-erro-gabarito').textContent, /certo ou errado/);
+  Questoes.marcarGabarito('E');
+  await Questoes.salvar();
+  const [c] = chamadas('POST', '/questions');
+  assert.equal(c.corpo.tipo, 'CE'); assert.deepEqual(c.corpo.alternativas, []); assert.equal(c.corpo.gabarito, 'E');
 });
 
-test('pedirResposta: sem marcação, mostra o aviso e não responde', () => {
-  const r = L.pedirResposta(L.estadoInicialRefazer(FILA));
-  assert.equal(r.pode, false);
-  assert.match(r.estado.erro, /Escolha uma alternativa/);
+test('trocar o tipo descarta o gabarito (a letra C de múltipla escolha não é o "Certo")', async () => {
+  await iniciar([]);
+  Questoes.abrirNovo();
+  Questoes.marcarGabarito('C');
+  Questoes.definirTipo('CE');
+  assert.equal(el('qm-bloco-me').hidden, true);
+  assert.equal(el('qm-bloco-ce').hidden, false);
+  assert.equal(el('qm-ce-c').getAttribute('aria-checked'), 'false');
+  assert.equal(el('qm-ce-e').getAttribute('aria-checked'), 'false');
 });
 
-test('pedirResposta: com marcação, libera e limpa o aviso', () => {
-  const r = L.pedirResposta(L.marcarAlternativa(L.estadoInicialRefazer(FILA), 1));
-  assert.equal(r.pode, true);
-  assert.equal(r.estado.erro, '');
+test('"salvar e adicionar outra": mantém matéria, assunto e banca, limpa o resto e deixa aberto', async () => {
+  await iniciar([]);
+  Questoes.abrirNovo();
+  preencherValido();
+  await Questoes.salvarEOutra();
+  assert.equal(chamadas('POST', '/questions').length, 1);
+  assert.ok(el('q-form-modal').classList.contains('open'));
+  assert.equal(el('qm-enunciado').value, '');
+  assert.equal(el('qm-assunto').value, 'Restos a pagar');
+  assert.equal(el('qm-banca').value, 'FCC');
+  assert.equal(el('q-csel-text').textContent, 'Dir. Financeiro');
 });
 
-test('aplicarResultado: contabiliza acerto ou erro e trava a questão', () => {
-  const base = L.marcarAlternativa(L.estadoInicialRefazer(FILA), 1);
-  const ok = L.aplicarResultado(base, { acertou: true, gabarito: 'B', justificativa: 'j' });
-  assert.deepEqual([ok.respondida, ok.acertos, ok.erros], [true, 1, 0]);
-  const ruim = L.aplicarResultado(base, { acertou: false, gabarito: 'B', justificativa: 'j' });
-  assert.deepEqual([ruim.acertos, ruim.erros], [0, 1]);
+test('o servidor recusando: mostra a mensagem e mantém o formulário aberto', async () => {
+  await iniciar([]);
+  Questoes.abrirNovo();
+  preencherValido();
+  servidor.erro = 'matéria não encontrada';
+  await Questoes.salvar();
+  assert.match(ultimoToast().textContent, /matéria não encontrada/);
+  assert.ok(el('q-form-modal').classList.contains('open'));
 });
 
-test('aplicarResultado: guarda se a alternativa certa tinha sido riscada', () => {
-  let e = L.alternarCorte(L.estadoInicialRefazer(FILA), 1);   // risca a B (gabarito)
-  e = L.marcarAlternativa(e, 0);
-  const r = L.aplicarResultado(e, { acertou: false, gabarito: 'B', justificativa: '' });
-  assert.equal(r.riscouAGabarito, true);
+test('editar: preenche o formulário com a questão e salva com PUT', async () => {
+  await iniciar([Qs({ id: 7, enunciado: 'Original', alternativas: ['um', 'dois', 'tres'] })]);
+  Questoes.abrir(7);
+  assert.equal(el('qm-titulo').textContent, 'Editar questão');
+  assert.equal(el('qm-enunciado').value, 'Original');
+  assert.equal(el('qm-excluir').hidden, false);
+  assert.equal(el('qm-salvar-outra').hidden, true);
+  el('qm-enunciado').value = 'Editado';
+  await Questoes.salvar();
+  const [c] = chamadas('PUT', '/questions/7');
+  assert.equal(c.corpo.enunciado, 'Editado');
+  assert.equal(chamadas('POST', '/questions').length, 0);
 });
 
-test('proxima: avança, limpa cortes/marcação e mantém o placar', () => {
-  let e = L.aplicarResultado(L.alternarCorte(L.marcarAlternativa(L.estadoInicialRefazer(FILA), 1), 2), { acertou: true, gabarito: 'B', justificativa: '' });
-  e = L.proxima(e);
-  assert.equal(e.indice, 1);
-  assert.deepEqual(e.cortadas, []);
-  assert.equal(e.marcada, null);
-  assert.equal(e.respondida, false);
-  assert.equal(e.acertos, 1);
+test('novo formulário já vem com matéria, assunto e banca dos filtros ativos', async () => {
+  await iniciar([Qs({ id: 1 })]);
+  Questoes.filtro('materia', 'Dir. Financeiro'); Questoes.filtro('banca', 'FCC');
+  Questoes.abrirNovo();
+  assert.equal(el('q-csel-text').textContent, 'Dir. Financeiro');
+  assert.equal(el('qm-banca').value, 'FCC');
 });
 
-test('proxima: depois da última questão, marca o fim', () => {
-  const e = L.proxima({ ...L.estadoInicialRefazer(FILA), indice: 1 });
-  assert.equal(e.fim, true);
+test('sugestões de assunto vêm das questões da matéria escolhida', async () => {
+  await iniciar([Qs({ id: 1, materia_nome: 'Dir. Financeiro', assunto: 'Restos a pagar' }), Qs({ id: 2, materia_nome: 'Contabilidade', assunto: 'Depreciação' })]);
+  Questoes.abrirNovo();
+  csel.pickCsel('q-csel', 2, 'Contabilidade', '#1d9e75');
+  assert.match(el('qm-dl-assuntos').innerHTML, /Depreciação/);
+  assert.ok(!el('qm-dl-assuntos').innerHTML.includes('Restos a pagar'));
 });
 
-test('refazerEsta: limpa a questão atual mas mantém o placar', () => {
-  const base = L.aplicarResultado(L.marcarAlternativa(L.estadoInicialRefazer(FILA), 1), { acertou: true, gabarito: 'B', justificativa: '' });
-  const e = L.refazerEsta(base);
-  assert.equal(e.respondida, false); assert.equal(e.marcada, null); assert.equal(e.indice, 0);
-  assert.equal(e.acertos, 1);
+// ── excluir e fechar ────────────────────────────────────────────────────────
+test('excluir pela lista: pede confirmação e só então apaga', async () => {
+  await iniciar([Qs({ id: 3 })]);
+  const p = Questoes.excluir(3);
+  confirmarNoModal(true);
+  await p;
+  assert.equal(chamadas('DELETE', '/questions/3').length, 1);
+  assert.match(el('q-resultado').innerHTML, /Seu caderno está vazio/);
 });
 
-test('questaoAtual: devolve a questão do índice', () => {
-  assert.equal(L.questaoAtual({ ...L.estadoInicialRefazer(FILA), indice: 1 }).id, 11);
+test('excluir cancelado: nada é apagado', async () => {
+  await iniciar([Qs({ id: 3 })]);
+  const p = Questoes.excluir(3);
+  confirmarNoModal(false);
+  await p;
+  assert.equal(chamadas('DELETE', '/questions/3').length, 0);
 });
 
-test('aplicarResultado: guarda o id das questões erradas na rodada', () => {
-  const base = L.marcarAlternativa(L.estadoInicialRefazer(FILA), 0);
-  const e = L.aplicarResultado(base, { acertou: false, gabarito: 'B', justificativa: '' });
-  assert.deepEqual(e.errouIds, [10]);
+test('excluir dentro do formulário: confirma, apaga e fecha', async () => {
+  await iniciar([Qs({ id: 4 })]);
+  Questoes.abrir(4);
+  const p = Questoes.excluirDoFormulario();
+  confirmarNoModal(true);
+  await p;
+  assert.equal(chamadas('DELETE', '/questions/4').length, 1);
+  assert.ok(!el('q-form-modal').classList.contains('open'));
 });
 
-test('aplicarResultado: acertar depois tira a questão da lista de erradas', () => {
-  const base = L.marcarAlternativa(L.estadoInicialRefazer(FILA), 0);
-  let e = L.aplicarResultado(base, { acertou: false, gabarito: 'B', justificativa: '' });
-  e = L.marcarAlternativa(L.refazerEsta(e), 1);
-  e = L.aplicarResultado(e, { acertou: true, gabarito: 'B', justificativa: '' });
-  assert.deepEqual(e.errouIds, []);
+test('Escape fecha o formulário', async () => {
+  await iniciar([Qs()]);
+  Questoes.abrirNovo();
+  (docListeners.keydown || []).slice().forEach(f => f({ key: 'Escape', preventDefault() {} }));
+  assert.ok(!el('q-form-modal').classList.contains('open'));
 });
 
-test('filaDasErradas: só as questões que ficaram erradas, na mesma ordem', () => {
-  const e = { ...L.estadoInicialRefazer(FILA), errouIds: [11] };
-  assert.deepEqual(L.filaDasErradas(e).map(q => q.id), [11]);
+test('o aviso de erro de um campo some assim que a pessoa o edita', async () => {
+  await iniciar([]);
+  Questoes.abrirNovo();
+  await Questoes.salvar();
+  assert.equal(el('qm-erro-enunciado').textContent, 'Escreva o enunciado.');
+  assert.equal(el('qm-enunciado').getAttribute('aria-invalid'), 'true');
+  Questoes.editou('enunciado');
+  assert.equal(el('qm-erro-enunciado').textContent, '');
+  assert.equal(el('qm-enunciado').getAttribute('aria-invalid'), 'false');
+  assert.ok(el('qm-erro-materia').textContent, 'os erros dos outros campos continuam');
 });
 
-test('sugestoes: assuntos distintos, sem vazios, em ordem; filtrados pela matéria', () => {
-  const lista = [
-    Q({ id: 1, materia_nome: 'Dir. Financeiro', materia_cor: '#d4537e', assunto: 'Restos a pagar' }), Q({ id: 2, materia_nome: 'Dir. Financeiro', materia_cor: '#d4537e', assunto: 'Restos a pagar' }),
-    Q({ id: 3, materia_nome: 'Dir. Financeiro', materia_cor: '#d4537e', assunto: 'Créditos adicionais' }), Q({ id: 4, materia_nome: 'Contabilidade', assunto: 'Depreciação' }),
-    Q({ id: 5, materia_nome: 'Dir. Financeiro', materia_cor: '#d4537e', assunto: '' }),
-  ];
-  assert.deepEqual(L.sugestoes(lista, 'assunto', 'Dir. Financeiro'), ['Créditos adicionais', 'Restos a pagar']);
-  assert.deepEqual(L.sugestoes(lista, 'assunto', null), ['Créditos adicionais', 'Depreciação', 'Restos a pagar']);
-});
+// ── o caderno não depende das matérias do app (que um novo ciclo zera) ─────
+async function comAppSemMaterias(fn) {
+  const original = globalThis.fetch;
+  globalThis.fetch = async (url, o) => (url.endsWith('/categories') ? { ok: true, status: 200, json: async () => [] } : original(url, o));
+  try { await loadCategories(); await fn(); }
+  finally { globalThis.fetch = original; await loadCategories(); }
+}
 
-test('sugestoes: bancas de todas as matérias', () => {
-  const lista = [Q({ banca: 'FGV' }), Q({ id: 2, banca: 'FCC' }), Q({ id: 3, banca: 'FCC' })];
-  assert.deepEqual(L.sugestoes(lista, 'banca', 'Dir. Financeiro'), ['FCC', 'FGV']);
-});
-
-test('validarFormulario: a cor da matéria não é obrigatória, mas o nome tem limite', () => {
-  assert.equal(L.validarFormulario(FORM({ materia_cor: '' })).ok, true);
-  assert.ok(L.validarFormulario(FORM({ materia_nome: 'x'.repeat(101) })).erros.materia);
-});
-
-test('montarPayload: leva o nome e a cor da matéria', () => {
-  const p = L.montarPayload(FORM({ materia_nome: '  Contabilidade ', materia_cor: '#1d9e75' }));
-  assert.equal(p.materia_nome, 'Contabilidade'); assert.equal(p.materia_cor, '#1d9e75');
-  assert.equal('categoria_id' in p, false);
-});
-
-// ── matérias do formulário: as do app + as que já existem no caderno ───────
-const CAT = (id, name, color) => ({ id, name, color });
-
-test('opcoesDeMateria: as matérias do app vêm primeiro, com os próprios ids', () => {
-  const o = L.opcoesDeMateria([CAT(3, 'Auditoria', '#a78bfa'), CAT(1, 'Contabilidade', '#2dd4bf')], []);
-  assert.deepEqual(o.map(x => [x.id, x.name, x.color]), [[3, 'Auditoria', '#a78bfa'], [1, 'Contabilidade', '#2dd4bf']]);
-});
-
-test('opcoesDeMateria: junta as matérias que só existem no caderno, sem repetir', () => {
-  const qs = [Q({ materia_nome: 'Contabilidade', materia_cor: '#000000' }), Q({ id: 2, materia_nome: 'Português', materia_cor: '#fb923c' }),
-              Q({ id: 3, materia_nome: 'Português', materia_cor: '#fb923c' }), Q({ id: 4, materia_nome: 'Direito', materia_cor: '#e879f9' })];
-  const o = L.opcoesDeMateria([CAT(1, 'Contabilidade', '#2dd4bf')], qs);
-  assert.deepEqual(o.map(x => x.name), ['Contabilidade', 'Direito', 'Português']);
-  assert.equal(o[0].color, '#2dd4bf', 'a cor atual do app vence a cor guardada na questão');
-  assert.equal(o[2].color, '#fb923c');
-});
-
-test('opcoesDeMateria: com o app sem nenhuma matéria (depois de um novo ciclo), o caderno ainda oferece as suas', () => {
-  const o = L.opcoesDeMateria([], [Q({ materia_nome: 'Direito', materia_cor: '#e879f9' })]);
-  assert.deepEqual(o.map(x => x.name), ['Direito']);
-});
-
-test('opcoesDeMateria: os ids são únicos e não colidem com os do app', () => {
-  const o = L.opcoesDeMateria([CAT(1, 'A', '#111111'), CAT(2, 'B', '#222222')], [Q({ materia_nome: 'C' }), Q({ id: 2, materia_nome: 'D' })]);
-  assert.equal(new Set(o.map(x => x.id)).size, 4);
-  assert.ok(o.slice(2).every(x => x.id >= 100000));
-});
-
-test('opcoesDeMateria: ignora o nome em maiúsculas/minúsculas ao detectar repetição', () => {
-  const o = L.opcoesDeMateria([CAT(1, 'Contabilidade', '#2dd4bf')], [Q({ materia_nome: 'contabilidade' })]);
-  assert.equal(o.length, 1);
-});
-
-// ── painel de desempenho ───────────────────────────────────────────────────
-test('FILTRO_VAZIO: a situação começa vazia', () => { assert.equal(L.FILTRO_VAZIO.situacao, ''); });
-
-test('situacaoDe: dominada, para revisar ou ainda não refeita', () => {
-  assert.equal(L.situacaoDe(Q({ ultima_acertou: true })), 'dominadas');
-  assert.equal(L.situacaoDe(Q({ ultima_acertou: false })), 'revisar');
-  assert.equal(L.situacaoDe(Q({ ultima_acertou: null })), 'novas');
-});
-
-test('passaFiltro: situação dominadas e novas', () => {
-  assert.equal(L.passaFiltro(Q({ ultima_acertou: true }), F({ situacao: 'dominadas' })), true);
-  assert.equal(L.passaFiltro(Q({ ultima_acertou: false }), F({ situacao: 'dominadas' })), false);
-  assert.equal(L.passaFiltro(Q({ ultima_acertou: null }), F({ situacao: 'novas' })), true);
-  assert.equal(L.passaFiltro(Q({ ultima_acertou: true }), F({ situacao: 'novas' })), false);
-});
-
-const OITO = [
-  Q({ id: 1, tentativas: 3, acertos: 1, ultima_acertou: false }), Q({ id: 2, tentativas: 1, acertos: 1, ultima_acertou: true }),
-  Q({ id: 3 }), Q({ id: 4, tentativas: 2, acertos: 0, ultima_acertou: false }), Q({ id: 5, tentativas: 2, acertos: 2, ultima_acertou: true }),
-  Q({ id: 6, tentativas: 1, acertos: 1, ultima_acertou: true }), Q({ id: 7 }), Q({ id: 8 }),
-];
-
-test('resumoGeral: conta o caderno inteiro', () => {
-  assert.deepEqual(L.resumoGeral(OITO), {
-    total: 8, dominadas: 3, revisar: 2, novas: 3, tentativas: 9, acertos: 5, erros: 4, taxaAcerto: 56, pctDominadas: 38,
+test('o formulário oferece as matérias que já estão no caderno mesmo com o app sem nenhuma matéria', async () => {
+  await iniciar([Qs({ id: 1, materia_nome: 'Direito financeiro', materia_cor: '#fb923c' })]);
+  await comAppSemMaterias(async () => {
+    Questoes.abrirNovo();
+    assert.match(el('q-csel-menu').innerHTML, /Direito financeiro/);
   });
 });
 
-test('resumoGeral: caderno vazio não inventa porcentagem', () => {
-  assert.deepEqual(L.resumoGeral([]), { total: 0, dominadas: 0, revisar: 0, novas: 0, tentativas: 0, acertos: 0, erros: 0, taxaAcerto: null, pctDominadas: 0 });
+test('editar uma questão cuja matéria não existe mais no app mantém a matéria', async () => {
+  await iniciar([Qs({ id: 9, materia_nome: 'Direito financeiro', materia_cor: '#fb923c' })]);
+  await comAppSemMaterias(async () => {
+    Questoes.abrir(9);
+    assert.equal(el('q-csel-text').textContent, 'Direito financeiro');
+    await Questoes.salvar();
+    const [c] = chamadas('PUT', '/questions/9');
+    assert.equal(c.corpo.materia_nome, 'Direito financeiro'); assert.equal(c.corpo.materia_cor, '#fb923c');
+  });
 });
 
-test('resumoGeral: as três situações sempre somam o total', () => {
-  const r = L.resumoGeral(OITO);
-  assert.equal(r.dominadas + r.revisar + r.novas, r.total);
+test('escolher no formulário uma matéria do app grava o nome e a cor dela', async () => {
+  await iniciar([]);
+  Questoes.abrirNovo();
+  csel.pickCsel('q-csel', 2, 'Contabilidade', '#1d9e75');
+  el('qm-enunciado').value = 'Julgue o item.';
+  Questoes.definirTipo('CE'); Questoes.marcarGabarito('C');
+  await Questoes.salvar();
+  const [c] = chamadas('POST', '/questions');
+  assert.equal(c.corpo.materia_nome, 'Contabilidade'); assert.equal(c.corpo.materia_cor, '#1d9e75');
+});
+
+// ── painel de desempenho ───────────────────────────────────────────────────
+const TRES = () => [Qs({ id: 1, tentativas: 3, acertos: 1, ultima_acertou: false }), Qs({ id: 2, banca: 'FGV', tentativas: 1, acertos: 1, ultima_acertou: true }), Qs({ id: 3 })];
+
+test('o painel mostra os números do caderno todo', async () => {
+  await iniciar(TRES());
+  const h = el('q-painel').innerHTML;
+  assert.match(h, /q-kpi-num">3</); assert.match(h, /q-kpi-num ok">1</); assert.match(h, /q-kpi-num err">1</); assert.match(h, /q-kpi-num nd">1</);
+  assert.equal(el('q-painel').hidden, false);
+});
+
+test('o painel NÃO muda quando os filtros mudam (ele é o caderno inteiro)', async () => {
+  await iniciar(TRES());
+  Questoes.filtro('banca', 'FGV');
+  assert.equal(linhas(), 1);
+  assert.match(el('q-painel').innerHTML, /q-kpi-num">3</);
+});
+
+test('clicar em "Para revisar" filtra a lista e marca o cartão e a caixa "Só as que errei"', async () => {
+  await iniciar(TRES());
+  Questoes.situacao('revisar');
+  assert.equal(linhas(), 1);
+  assert.equal(el('qf-erradas').checked, true);
+  assert.match(el('q-painel').innerHTML, /aria-pressed="true" onclick="Questoes\.situacao\('revisar'\)"/);
+});
+
+test('clicar de novo no mesmo cartão tira o filtro', async () => {
+  await iniciar(TRES());
+  Questoes.situacao('dominadas'); Questoes.situacao('dominadas');
+  assert.equal(linhas(), 3);
+});
+
+test('o cartão "No caderno" limpa a situação', async () => {
+  await iniciar(TRES());
+  Questoes.situacao('novas'); assert.equal(linhas(), 1);
+  Questoes.situacao('todas');
+  assert.equal(linhas(), 3);
+});
+
+test('a caixa "Só as que errei" e o cartão andam juntos', async () => {
+  await iniciar(TRES());
+  Questoes.somenteErradas(true);
+  assert.match(el('q-painel').innerHTML, /aria-pressed="true" onclick="Questoes\.situacao\('revisar'\)"/);
+  Questoes.somenteErradas(false);
+  assert.match(el('q-painel').innerHTML, /aria-pressed="true" onclick="Questoes\.situacao\('todas'\)"/);
+});
+
+test('caderno vazio esconde o painel', async () => {
+  await iniciar([]);
+  assert.equal(el('q-painel').hidden, true);
+});
+
+test('depois de resolver e voltar, o painel reflete o resultado', async () => {
+  await iniciar([Qs({ id: 1 }), Qs({ id: 2 })]);
+  assert.match(el('q-painel').innerHTML, /q-kpi-num ok">0</);
+  Questoes.iniciarRefazer();
+  Questoes.marcar(1); await Questoes.responder();     // todas têm gabarito B: acerta
+  await Questoes.sair();
+  assert.match(el('q-painel').innerHTML, /q-kpi-num ok">1</);
+  assert.match(el('q-painel').innerHTML, /100%/);
+});
+
+// ── revisão espaçada ───────────────────────────────────────────────────────
+const { usarRelogio, situacaoDe } = await import('../src/js/questoes-logica.js');
+const HOJE = new Date(2026, 9, 8, 12, 0, 0);
+const diasAtras = (n) => { const d = new Date(HOJE); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 19).replace('T', ' '); };
+const ACERTOU = (id, seguidos, dias, o = {}) => Qs({ id, ultima_acertou: true, acertos_seguidos: seguidos, ultima_respondida_em: diasAtras(dias), tentativas: seguidos, acertos: seguidos, ...o });
+async function comHoje(fn) { const restaurar = usarRelogio(() => HOJE); try { await fn(); } finally { restaurar(); } }
+
+test('o painel e a lista distinguem as vencidas das dominadas', async () => {
+  await comHoje(async () => {
+    await iniciar([ACERTOU(1, 1, 1), ACERTOU(2, 1, 0), ACERTOU(3, 3, 10)]);
+    assert.match(el('q-painel').innerHTML, /q-kpi-num ok">1</);
+    assert.match(el('q-painel').innerHTML, /q-kpi-num venc">2</);
+    Questoes.situacao('vencidas');
+    assert.equal(linhas(), 2);
+  });
+});
+
+test('"Revisar hoje" abre uma rodada só com o que errou e o que venceu, ignorando os filtros', async () => {
+  await comHoje(async () => {
+    await iniciar([ACERTOU(1, 1, 1), ACERTOU(2, 1, 0), Qs({ id: 3, ultima_acertou: false, tentativas: 1 }), Qs({ id: 4 })]);
+    Questoes.buscar('texto que não existe');                      // a lista fica vazia, mas o painel continua valendo
+    Questoes.revisarHoje();
+    assert.equal(el('q-tela-refazer').hidden, false);
+    assert.match(el('q-tela-refazer').innerHTML, /Questão 1 de 2/);
+  });
+});
+
+test('"Revisar hoje" sem nada pendente avisa e não abre rodada', async () => {
+  await comHoje(async () => {
+    await iniciar([ACERTOU(1, 1, 0), Qs({ id: 2 })]);
+    Questoes.revisarHoje();
+    assert.equal(el('q-tela-refazer').hidden, true);
+    assert.match(ultimoToast().textContent, /Nada para revisar hoje/);
+  });
+});
+
+test('acertar uma vencida a coloca em dia (sem precisar recarregar) e mostra a próxima revisão', async () => {
+  await comHoje(async () => {
+    await iniciar([ACERTOU(1, 1, 1)]);
+    servidor.agora = diasAtras(0);
+    assert.equal(situacaoDe(JSON.parse(JSON.stringify(servidor.questoes[0]))), 'vencidas');
+    Questoes.situacao('vencidas'); Questoes.iniciarRefazer();
+    Questoes.marcar(1); await Questoes.responder();
+    assert.match(el('q-tela-refazer').innerHTML, /Você acertou · próxima revisão em 3 dias/);   // 2 acertos seguidos = 3 dias
+    await Questoes.sair();
+    assert.match(el('q-painel').innerHTML, /q-kpi-num ok">1</);
+    assert.match(el('q-painel').innerHTML, /q-kpi-num venc">0</);
+  });
+});
+
+test('errar uma questão em dia a leva pra "Para revisar" e zera a escada', async () => {
+  await comHoje(async () => {
+    await iniciar([ACERTOU(1, 5, 0)]);
+    servidor.agora = diasAtras(0);
+    Questoes.iniciarRefazer();
+    Questoes.marcar(0); await Questoes.responder();                // errou (gabarito é B)
+    await Questoes.sair();
+    assert.match(el('q-painel').innerHTML, /q-kpi-num err">1</);
+    assert.equal(servidor.questoes[0].acertos_seguidos, 0);
+  });
+});
+
+// ── a linha de resumo visível saiu; navegação entre questões ───────────────
+test('não existe mais a linha repetida "N questões · Acerto nas tentativas" (o painel já mostra)', async () => {
+  await iniciar([Qs({ id: 1 }), Qs({ id: 2 })]);
+  assert.ok(!el('q-resultado').innerHTML.includes('Acerto nas tentativas'));
+});
+
+test('a quantidade continua anunciada pra leitor de tela, sem aparecer na tela', async () => {
+  await iniciar([Qs({ id: 1 }), Qs({ id: 2 })]);
+  assert.match(el('q-resultado').innerHTML, /class="sr-only" role="status">2 questões</);
+  Questoes.buscar('texto que não existe');
+  assert.ok(!el('q-resultado').innerHTML.includes('sr-only'));
+  Questoes.limpar();
+});
+
+const TRES_Q = () => [Qs({ id: 1 }), Qs({ id: 2 }), Qs({ id: 3 })];
+const tecla = (key, alvo = { tagName: 'DIV' }) => (docListeners.keydown || []).slice().forEach(f => f({ key, target: alvo, preventDefault() {} }));
+
+test('as setas avançam e voltam entre as questões sem precisar responder', async () => {
+  await iniciar(TRES_Q());
+  Questoes.iniciarRefazer();
+  assert.match(el('q-tela-refazer').innerHTML, /Questão 1 de 3/);
+  Questoes.seguinte(); Questoes.seguinte();
+  assert.match(el('q-tela-refazer').innerHTML, /Questão 3 de 3/);
+  Questoes.anterior();
+  assert.match(el('q-tela-refazer').innerHTML, /Questão 2 de 3/);
+});
+
+test('ao voltar, a questão mantém tesouras e marcação, e a respondida mostra o resultado', async () => {
+  await iniciar(TRES_Q());
+  Questoes.iniciarRefazer();
+  Questoes.cortar(0); Questoes.marcar(2);
+  Questoes.seguinte(); Questoes.anterior();
+  assert.match(el('q-tela-refazer').innerHTML, /q-alt cortada/); assert.match(el('q-tela-refazer').innerHTML, /q-alt marcada/);
+  Questoes.cortar(0); Questoes.marcar(1); await Questoes.responder();       // gabarito B: acerta
+  Questoes.seguinte(); Questoes.anterior();
+  assert.match(el('q-tela-refazer').innerHTML, /Você acertou/);
+});
+
+test('o teclado também navega: seta direita avança e seta esquerda volta', async () => {
+  await iniciar(TRES_Q());
+  Questoes.iniciarRefazer();
+  tecla('ArrowRight'); assert.match(el('q-tela-refazer').innerHTML, /Questão 2 de 3/);
+  tecla('ArrowLeft');  assert.match(el('q-tela-refazer').innerHTML, /Questão 1 de 3/);
+});
+
+test('as setas do teclado não navegam enquanto a pessoa digita ou tem janela aberta', async () => {
+  await iniciar(TRES_Q());
+  Questoes.iniciarRefazer();
+  tecla('ArrowRight', { tagName: 'TEXTAREA' });
+  assert.match(el('q-tela-refazer').innerHTML, /Questão 1 de 3/);
+  el('q-form-modal').classList.add('open');
+  tecla('ArrowRight');
+  assert.match(el('q-tela-refazer').innerHTML, /Questão 1 de 3/);
+  el('q-form-modal').classList.remove('open');
+});
+
+test('as setas do teclado não fazem nada fora do modo resolver', async () => {
+  await iniciar(TRES_Q());
+  tecla('ArrowRight');
+  assert.equal(el('q-tela-refazer').hidden, true);
+});
+
+test('terminar a rodada pulando uma questão avisa e leva até ela', async () => {
+  await iniciar(TRES_Q());
+  Questoes.iniciarRefazer();
+  Questoes.marcar(1); await Questoes.responder(); Questoes.proxima();          // responde a 1ª
+  Questoes.seguinte();                                                            // pula a 2ª
+  Questoes.marcar(1); await Questoes.responder(); Questoes.proxima();          // responde a 3ª → fim
+  assert.match(el('q-tela-refazer').innerHTML, /pulou 1 questão/);
+  Questoes.irParaPulada();
+  assert.match(el('q-tela-refazer').innerHTML, /Questão 2 de 3/);
 });

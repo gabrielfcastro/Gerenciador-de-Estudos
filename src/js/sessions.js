@@ -105,16 +105,18 @@ const totaisNoTopo = {
   id: 'totaisNoTopo',
   afterDatasetsDraw(chart) {
     const { ctx, scales: { x, y }, data } = chart;
+    // séries escondidas clicando na legenda não entram na conta (nem na altura do texto)
+    const visiveis = data.datasets.filter((_, i) => (chart.isDatasetVisible ? chart.isDatasetVisible(i) : true));
     ctx.save();
     ctx.font = '700 15px Inter, system-ui, sans-serif';
     ctx.fillStyle = lerVarCss('--text');
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
     data.labels.forEach((_, i) => {
-      const horas = somarEmpilhado(data.datasets, i);
+      const horas = somarEmpilhado(visiveis, i);
       if (horas <= 0) return;
       // o texto usa os segundos exatos (as barras guardam horas com 2 casas, que arredondam)
-      const segundos = somarEmpilhado(data.datasets.map(d => ({ data: d.segundos })), i);
+      const segundos = somarEmpilhado(visiveis.map(d => ({ data: d.segundos })), i);
       ctx.fillText(fmtDuration(segundos), x.getPixelForValue(i), y.getPixelForValue(horas) - 8);
     });
     ctx.restore();

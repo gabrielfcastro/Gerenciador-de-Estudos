@@ -285,6 +285,8 @@ class ServicoQuestoes:
         q["ultima_acertou"] = None if ultima is None else bool(ultima)
         q["tentativas"] = int(q.get("tentativas") or 0)
         q["acertos"] = int(q.get("acertos") or 0)
+        q["acertos_seguidos"] = int(q.get("acertos_seguidos") or 0)
+        q["ultima_respondida_em"] = q.get("ultima_respondida_em")
         return q
 
     @staticmethod
@@ -325,4 +327,6 @@ class ServicoQuestoes:
             "justificativa": q["justificativa"],
             "tentativas": int(atual["tentativas"]),
             "acertos": int(atual["acertos"]),
+            "acertos_seguidos": int(atual.get("acertos_seguidos") or 0),
+            "ultima_respondida_em": atual.get("ultima_respondida_em"),
         }

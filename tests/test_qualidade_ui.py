@@ -267,3 +267,15 @@ def test_separador_do_assunto_some_em_tela_estreita():
 def test_painel_de_desempenho_fica_acima_dos_filtros():
     assert 'id="q-painel"' in HTML
     assert HTML.index('id="q-painel"') < HTML.index('id="q-filtros"')
+
+
+def test_texto_da_questao_e_justificado_e_a_tela_de_resolver_tem_largura_de_leitura():
+    regra = re.search(r"\.q-enunciado\{([^}]*)\}", CSS).group(1)
+    assert "text-align:justify" in regra and "hyphens:auto" in regra
+    assert re.search(r"\.q-alt-texto\{[^}]*text-align:justify", CSS)
+    assert re.search(r"#q-tela-refazer\{[^}]*max-width:\d+px", CSS)
+
+
+def test_a_linha_resumo_repetida_saiu_e_o_leitor_de_tela_continua_sendo_avisado():
+    assert ".q-resumo" not in CSS
+    assert re.search(r"\.sr-only\{", CSS)

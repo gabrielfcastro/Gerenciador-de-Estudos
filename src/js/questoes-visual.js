@@ -5,7 +5,7 @@
 
 import { esc, escAttr } from './utils.js';
 import { ico } from './icons.js';
-import { LETRAS, questaoAtual, resumoDesempenho, textoStatus, rotuloTipo } from './questoes-logica.js';
+import { LETRAS, questaoAtual, totalRespondidas, indicesNaoRespondidos, textoStatus, rotuloTipo, situacaoDe, intervaloDe, textoProximaRevisao } from './questoes-logica.js';
 
 const plural = (n, singular, pluralTxt) => `${n} ${n === 1 ? singular : pluralTxt}`;
 const corSegura = (cor) => (/^#[0-9a-f]{3,8}$/i.test(cor || '') ? cor : '#94a3b8');
@@ -34,12 +34,16 @@ export function htmlPainel(r, situacao) {
   const faixa = (classe, n) => (n ? `<span class="${classe}" style="flex:${n} 1 0"></span>` : '');
   const cartoes = [
     { id: 'todas', icone: 'book-open', rotulo: 'No caderno', num: r.total, classe: '', sub: r.total === 1 ? 'questão cadastrada' : 'questões cadastradas' },
-    { id: 'dominadas', icone: 'check', rotulo: 'Dominadas', num: r.dominadas, classe: ' ok', sub: `${r.pctDominadas}% · acertou na última` },
+    { id: 'dominadas', icone: 'check', rotulo: 'Dominadas', num: r.dominadas, classe: ' ok', sub: `${r.pctDominadas}% · em dia` },
+    { id: 'vencidas', icone: 'clock', rotulo: 'Vencidas', num: r.vencidas, classe: ' venc', sub: 'hora de rever' },
     { id: 'revisar', icone: 'undo', rotulo: 'Para revisar', num: r.revisar, classe: ' err', sub: 'errou na última vez' },
     { id: 'novas', icone: 'minus', rotulo: 'Ainda não refeitas', num: r.novas, classe: ' nd', sub: 'nunca resolvidas' },
   ];
+  const cta = r.hoje
+    ? `<button type="button" class="btn btn-ghost q-hoje" onclick="Questoes.revisarHoje()">${ico('play')} Revisar hoje · ${r.hoje}</button>`
+    : (r.tentativas ? `<span class="q-hoje-ok">${ico('check')} Revisão de hoje em dia</span>` : '');
   return `<section class="card q-painel" aria-label="Seu desempenho">
-    <div class="q-painel-cab"><h3>Seu desempenho</h3><span class="q-painel-taxa">${desempenho}</span></div>
+    <div class="q-painel-cab"><div class="q-painel-esq"><h3>Seu desempenho</h3>${cta}</div><span class="q-painel-taxa">${desempenho}</span></div>
     <div class="q-barra-geral" role="img" aria-label="${r.acertos} acertos e ${r.erros} erros nas tentativas">${faixa('ok', r.acertos)}${faixa('err', r.erros)}</div>
     <div class="q-kpis">${cartoes.map(c => `<button type="button" class="q-kpi" aria-pressed="${ativo === c.id}" onclick="Questoes.situacao('${c.id}')">
       <span class="q-kpi-rot">${ico(c.icone)} ${c.rotulo}</span><span class="q-kpi-num${c.classe}">${c.num}</span><span class="q-kpi-sub">${c.sub}</span></button>`).join('')}</div>
@@ -52,17 +56,14 @@ export function htmlTopoAcoes(n) {
     + (n ? `<button type="button" class="btn btn-primary" onclick="Questoes.iniciarRefazer()" title="Resolver ${n} ${n === 1 ? 'questão' : 'questões'}" aria-label="Resolver ${n} ${n === 1 ? 'questão' : 'questões'}">${ico('play')}</button>` : '');
 }
 
-export function htmlResumo(lista) {
-  const r = resumoDesempenho(lista);
-  const desempenho = r.tentativas
-    ? `Acerto nas tentativas: ${r.percentual}% (${r.acertos} de ${r.tentativas})`
-    : 'Ainda sem tentativas';
-  return `<div class="q-resumo" role="status"><strong>${plural(lista.length, 'questão', 'questões')}</strong><span>${desempenho}</span></div>`;
+/** A quantidade de questões da lista, só pra leitor de tela (o painel já mostra os números na tela). */
+export function htmlContagemOculta(n) {
+  return `<p class="sr-only" role="status">${plural(n, 'questão', 'questões')}</p>`;
 }
 
 export function htmlLinha(q) {
-  const estado = q.ultima_acertou == null ? 'nd' : (q.ultima_acertou ? 'ok' : 'err');
-  const icone = { nd: 'minus', ok: 'check', err: 'x' }[estado];
+  const estado = { novas: 'nd', dominadas: 'ok', vencidas: 'venc', revisar: 'err' }[situacaoDe(q)];
+  const icone = { nd: 'minus', ok: 'check', venc: 'clock', err: 'x' }[estado];
   const assunto = q.assunto ? `<span class="q-assunto">${esc(q.assunto)}</span>` : '';
   const banca = q.banca ? `<span class="q-chip">${esc(q.banca)}</span>` : '';
   return `<article class="q-linha" tabindex="0" onclick="Questoes.abrir(${q.id})" onkeydown="if(event.key==='Enter'&amp;&amp;event.target===this)Questoes.abrir(${q.id})">
@@ -123,7 +124,9 @@ function htmlAlternativa(e, q, i, rotulo, letra, ehCE) {
 export function htmlCartaoRefazer(e) {
   const q = questaoAtual(e);
   const total = e.fila.length;
-  const concluidas = e.indice + (e.respondida ? 1 : 0);
+  const concluidas = totalRespondidas(e);
+  const seta = (nav, icone, rotulo, atalho, handler, desabilitada) =>
+    `<button type="button" class="icon-btn q-nav-btn" data-nav="${nav}" onclick="Questoes.${handler}()" title="${rotulo} (${atalho})" aria-label="${rotulo}"${desabilitada ? ' disabled' : ''}>${ico(icone)}</button>`;
   const ehCE = q.tipo === 'CE';
   const rotulos = ehCE ? ['Certo', 'Errado'] : q.alternativas;
   const letras = ehCE ? ['C', 'E'] : LETRAS;
@@ -131,7 +134,7 @@ export function htmlCartaoRefazer(e) {
   const topo = `<div class="q-refazer-topo">
     <button type="button" class="btn btn-ghost" onclick="Questoes.sair()">${ico('arrow-left')} Voltar ao caderno</button>
     <div class="q-progresso">
-      <span class="q-progresso-txt">Questão ${e.indice + 1} de ${total}</span>
+      <div class="q-nav">${seta('anterior', 'chevron-left', 'Questão anterior', 'seta esquerda', 'anterior', e.indice === 0)}<span class="q-progresso-txt">Questão ${e.indice + 1} de ${total}</span>${seta('seguinte', 'chevron-right', 'Ir para a próxima questão', 'seta direita', 'seguinte', e.indice + 1 >= total)}</div>
       <div class="q-barra" role="progressbar" aria-label="Progresso da rodada" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${concluidas}"><div style="width:${Math.round((concluidas / total) * 100)}%"></div></div>
     </div>
     <span class="q-placar">${plural(e.acertos, 'acerto', 'acertos')} · ${plural(e.erros, 'erro', 'erros')}</span>
@@ -147,7 +150,7 @@ export function htmlCartaoRefazer(e) {
     const r = e.resultado;
     const gabaritoTxt = ehCE ? (r.gabarito === 'C' ? 'Certo' : 'Errado') : r.gabarito;
     const aviso = r.acertou
-      ? '<div class="q-resultado ok">Você acertou</div>'
+      ? `<div class="q-resultado ok">Você acertou${r.acertos_seguidos > 0 ? ` · próxima revisão ${textoProximaRevisao(intervaloDe(r.acertos_seguidos))}` : ''}</div>`
       : `<div class="q-resultado err">Você errou. O gabarito é ${esc(gabaritoTxt)}.</div>`;
     const nota = (!r.acertou && e.riscouAGabarito)
       ? `<p class="q-nota">Você tinha riscado a alternativa ${esc(r.gabarito)}, que era a correta.</p>` : '';
@@ -156,7 +159,7 @@ export function htmlCartaoRefazer(e) {
     const proximaTxt = e.indice + 1 >= total ? 'Ver resultado' : 'Próxima questão';
     rodape = `${aviso}${nota}${justificativa}
       <div class="q-rodape">
-        <button type="button" class="btn btn-primary" onclick="Questoes.proxima()">${proximaTxt} ${ico('chevron-right')}</button>
+        <button type="button" class="btn btn-primary" data-foco="proxima" onclick="Questoes.proxima()">${proximaTxt} ${ico('chevron-right')}</button>
         <button type="button" class="btn btn-ghost" onclick="Questoes.refazerEsta()">${ico('undo')} Refazer esta</button>
       </div>`;
   }
@@ -180,6 +183,8 @@ export function htmlFim(e) {
   const respondidas = e.acertos + e.erros;
   const pct = respondidas ? Math.round((e.acertos / respondidas) * 100) : 0;
   const erradas = e.errouIds.length;
+  const puladas = indicesNaoRespondidos(e).length;
+  const principal = (cond) => (cond ? 'btn-primary' : 'btn-ghost');
   return `<div class="card q-fim">
     <h3>Fim da rodada</h3>
     <div class="q-fim-numeros">
@@ -187,8 +192,10 @@ export function htmlFim(e) {
       <div><span class="q-fim-num">${e.acertos}</span><span class="q-rotulo">${e.acertos === 1 ? 'acerto' : 'acertos'}</span></div>
       <div><span class="q-fim-num">${e.erros}</span><span class="q-rotulo">${e.erros === 1 ? 'erro' : 'erros'}</span></div>
     </div>
+    ${puladas ? `<p class="q-nota">Você pulou ${plural(puladas, 'questão', 'questões')} nesta rodada.</p>` : ''}
     <div class="q-rodape">
-      ${erradas ? `<button type="button" class="btn btn-primary" onclick="Questoes.refazerErradas()">${ico('undo')} Refazer as erradas (${erradas})</button>` : ''}
+      ${puladas ? `<button type="button" class="btn btn-primary" onclick="Questoes.irParaPulada()">${ico('chevron-left')} Responder ${puladas === 1 ? 'a pulada' : 'as puladas'}</button>` : ''}
+      ${erradas ? `<button type="button" class="btn ${principal(!puladas)}" onclick="Questoes.refazerErradas()">${ico('undo')} Refazer as erradas (${erradas})</button>` : ''}
       <button type="button" class="btn btn-ghost" onclick="Questoes.refazerTudo()">Refazer tudo de novo</button>
       <button type="button" class="btn btn-ghost" onclick="Questoes.sair()">Voltar ao caderno</button>
     </div>

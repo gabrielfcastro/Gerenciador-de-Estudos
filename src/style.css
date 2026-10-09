@@ -138,7 +138,7 @@ header{
 .cat-item:hover{background:var(--surface2)}
 .cat-dot{
   width:9px;height:9px;border-radius:50%;flex-shrink:0;
-  
+
 }
 .cat-name{flex:1;font-size:0.875rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cat-hours{font-size:0.75rem;color:var(--text2);font-variant-numeric:tabular-nums;white-space:nowrap;margin-right:4px}
@@ -217,7 +217,7 @@ header{
   border-radius:99px;font-size:0.75rem;font-weight:600;
   background:rgba(96,165,250,.1);color:var(--pause);
   border:1px solid rgba(96,165,250,.2);margin-left:12px;
-  
+
 }
 
 /* block status */
@@ -261,7 +261,7 @@ header{
   font-size:0.875rem;font-weight:600;font-family:inherit;
   cursor:pointer;transition:all .18s;
   display:inline-flex;align-items:center;gap:7px;
-  
+
 }
 .btn-primary{
   background:var(--accent-fill);color:#fff;
@@ -802,6 +802,13 @@ header{
 #view-questoes{overflow-y:auto}
 .q-wrap{width:100%;max-width:1120px;margin:0 auto;padding:28px;display:flex;flex-direction:column;gap:20px}
 #q-tela-lista,#q-tela-refazer{display:flex;flex-direction:column;gap:20px}
+/* resolver: coluna de leitura (o texto justificado vai de ponta a ponta do cartão) */
+#q-tela-refazer{width:100%;max-width:900px;margin-left:auto;margin-right:auto}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.q-nav{display:flex;align-items:center;gap:4px}
+.q-nav-btn{min-width:32px;min-height:32px}
+.q-nav-btn:disabled{opacity:.35;cursor:default}
+.q-nav-btn:disabled:hover{background:transparent;color:var(--text2)}
 
 /* topo da tela */
 .q-topo{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
@@ -830,9 +837,6 @@ header{
 .q-busca{flex:1;min-width:220px}
 
 /* resumo e lista */
-.q-resumo{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:12px}
-.q-resumo strong{font-size:1rem;font-weight:600}
-.q-resumo span{font-size:.875rem;color:var(--text2)}
 .q-lista{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
 .q-linha{display:flex;gap:14px;padding:16px 20px;border-top:1px solid var(--border);cursor:pointer;transition:background .12s}
 .q-linha:first-child{border-top:none}
@@ -869,14 +873,14 @@ header{
 .q-placar{font-size:.875rem;color:var(--text2);font-variant-numeric:tabular-nums}
 .q-cartao{padding:28px 32px}
 .q-cartao-meta{margin-bottom:20px}
-.q-enunciado{max-width:78ch;margin-bottom:24px;font-size:1rem;line-height:1.75;white-space:pre-wrap}
+.q-enunciado{margin-bottom:24px;font-size:1rem;line-height:1.75;white-space:pre-wrap;text-align:justify;hyphens:auto}
 
 .q-alt{display:flex;align-items:flex-start;gap:10px;margin:6px 0}
 .q-alt-corpo{flex:1;display:flex;align-items:flex-start;gap:12px;padding:10px 14px;border:1px solid transparent;border-radius:var(--r-sm);cursor:pointer;transition:background .12s,border-color .12s}
 .q-alt-corpo:hover{background:var(--surface2)}
 .q-alt-corpo:focus-visible{outline-offset:0}
 .q-letra{flex:none;width:30px;height:30px;border-radius:50%;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:.875rem;font-weight:600;color:var(--text2)}
-.q-alt-texto{flex:1;padding-top:3px;font-size:1rem;line-height:1.65;white-space:pre-wrap}
+.q-alt-texto{flex:1;padding-top:3px;font-size:1rem;line-height:1.65;white-space:pre-wrap;text-align:justify;hyphens:auto}
 .q-marca{flex:none;margin-top:3px}
 .q-marca .ico{width:20px;height:20px}
 .q-marca-ok{color:var(--green)}
@@ -954,6 +958,11 @@ header{
 .q-kpi-num.err{color:var(--red)}
 .q-kpi-num.nd{color:var(--text2)}
 .q-kpi-sub{font-size:.75rem;color:var(--text3)}
+.q-kpi-num.venc{color:var(--accent-text)}
+.q-st-venc{color:var(--accent-text);background:rgba(124,111,247,.12);border:1px solid var(--accent-text)}
+.q-painel-esq{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.q-hoje{padding:6px 14px;font-size:.875rem;color:var(--accent-text);border-color:var(--accent-text)}
+.q-hoje-ok{display:inline-flex;align-items:center;gap:6px;font-size:.875rem;font-weight:500;color:var(--green)}
 
 @media (max-width: 960px){
   .q-assunto::before{display:none}

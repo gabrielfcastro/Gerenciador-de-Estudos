@@ -15,11 +15,64 @@ export function rotuloTipo(tipo) {
   return tipo === 'CE' ? 'Certo ou errado' : 'Múltipla escolha';
 }
 
-// ── situação da questão (a última tentativa decide) ───────────────────────────
-/** 'dominadas' = acertou na última vez · 'revisar' = errou na última vez · 'novas' = nunca resolvida */
+// ── relógio (injetável, pra os testes darem o mesmo resultado em qualquer dia) ─
+let relogio = () => new Date();
+
+/** Troca o "agora" (só pra testes). Devolve uma função que restaura o relógio de verdade. */
+export function usarRelogio(fn) {
+  const anterior = relogio;
+  relogio = fn;
+  return () => { relogio = anterior; };
+}
+
+const pad2 = (n) => String(n).padStart(2, '0');
+const isoLocal = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const hojeLocal = () => isoLocal(relogio());
+
+/** O servidor guarda "AAAA-MM-DD HH:MM:SS" em UTC; devolve o dia (AAAA-MM-DD) no horário local de quem estuda. */
+export function dataLocalDe(sqliteUtc) {
+  const d = new Date(String(sqliteUtc).replace(' ', 'T') + 'Z');
+  return Number.isNaN(d.getTime()) ? null : isoLocal(d);
+}
+
+const emMs = (iso) => { const [y, m, d] = iso.split('-').map(Number); return Date.UTC(y, m - 1, d); };
+const somarDias = (iso, n) => new Date(emMs(iso) + n * 86400000).toISOString().slice(0, 10);
+const diferencaEmDias = (deIso, ateIso) => Math.round((emMs(ateIso) - emMs(deIso)) / 86400000);
+
+// ── revisão espaçada: a escada de prazos ──────────────────────────────────────
+/** Dias até a próxima revisão depois do 1º, 2º, 3º... acerto SEGUIDO. Errou: volta pro começo. */
+export const INTERVALOS_DIAS = [1, 3, 7, 15, 30, 60];
+
+export function intervaloDe(acertosSeguidos) {
+  if (!(acertosSeguidos > 0)) return 0;
+  return INTERVALOS_DIAS[Math.min(acertosSeguidos, INTERVALOS_DIAS.length) - 1];
+}
+
+/** Data (AAAA-MM-DD, local) da próxima revisão de quem acertou na última; null pra quem errou ou nunca fez. */
+export function proximaRevisao(q) {
+  if (q.ultima_acertou !== true || !q.ultima_respondida_em) return null;
+  const base = dataLocalDe(q.ultima_respondida_em);
+  return base ? somarDias(base, intervaloDe(q.acertos_seguidos || 1)) : null;
+}
+
+/** Positivo = falta tempo · 0 = é hoje · negativo = atrasou. */
+export function diasAteRevisao(q) {
+  const prox = proximaRevisao(q);
+  return prox ? diferencaEmDias(hojeLocal(), prox) : null;
+}
+
+// ── situação da questão ───────────────────────────────────────────────────────
+/**
+ * 'novas'     = nunca resolvida
+ * 'revisar'   = errou na última vez
+ * 'vencidas'  = acertou, mas o prazo de revisão chegou
+ * 'dominadas' = acertou e o prazo ainda não chegou (ou não há data pra calcular)
+ */
 export function situacaoDe(q) {
   if (q.ultima_acertou == null) return 'novas';
-  return q.ultima_acertou ? 'dominadas' : 'revisar';
+  if (!q.ultima_acertou) return 'revisar';
+  const dias = diasAteRevisao(q);
+  return dias !== null && dias <= 0 ? 'vencidas' : 'dominadas';
 }
 
 /** Os números do painel de desempenho: sempre o caderno inteiro, sem olhar os filtros. */
@@ -27,10 +80,12 @@ export function resumoGeral(questoes) {
   const total = questoes.length;
   const conta = (s) => questoes.filter(q => situacaoDe(q) === s).length;
   const dominadas = conta('dominadas');
+  const vencidas = conta('vencidas');
+  const revisar = conta('revisar');
   const tentativas = questoes.reduce((soma, q) => soma + (q.tentativas || 0), 0);
   const acertos = questoes.reduce((soma, q) => soma + (q.acertos || 0), 0);
   return {
-    total, dominadas, revisar: conta('revisar'), novas: conta('novas'),
+    total, dominadas, vencidas, revisar, hoje: vencidas + revisar, novas: conta('novas'),
     tentativas, acertos, erros: tentativas - acertos,
     taxaAcerto: tentativas ? Math.round((acertos / tentativas) * 100) : null,
     pctDominadas: total ? Math.round((dominadas / total) * 100) : 0,
@@ -49,7 +104,11 @@ export function passaFiltro(q, f, ignorar) {
   if (ignorar !== 'assunto' && f.assunto && q.assunto !== f.assunto) return false;
   if (ignorar !== 'banca' && f.banca && q.banca !== f.banca) return false;
   if (ignorar !== 'tipo' && f.tipo !== 'todos' && q.tipo !== f.tipo) return false;
-  if (f.situacao && situacaoDe(q) !== f.situacao) return false;
+  if (f.situacao) {
+    const s = situacaoDe(q);
+    const bate = f.situacao === 'hoje' ? (s === 'revisar' || s === 'vencidas') : s === f.situacao;   // 'hoje' = errou + vencidas
+    if (!bate) return false;
+  }
   if (f.busca && !normalizar(q.enunciado).includes(normalizar(f.busca))) return false;
   return true;
 }
@@ -101,16 +160,24 @@ export function sanearFiltros(questoes, f) {
 }
 
 // ── resumo e textos ───────────────────────────────────────────────────────────
-export function resumoDesempenho(lista) {
-  const tentativas = lista.reduce((s, q) => s + (q.tentativas || 0), 0);
-  const acertos = lista.reduce((s, q) => s + (q.acertos || 0), 0);
-  return { tentativas, acertos, percentual: tentativas ? Math.round((acertos / tentativas) * 100) : null };
+export function textoProximaRevisao(dias) {
+  return dias === 1 ? 'amanhã' : `em ${dias} dias`;
+}
+
+function quandoRevisar(q) {
+  const dias = diasAteRevisao(q);
+  if (dias === null) return '';
+  if (dias > 0) return `revisar ${textoProximaRevisao(dias)}`;
+  if (dias === 0) return 'revisar hoje';
+  return dias === -1 ? 'venceu ontem' : `venceu há ${-dias} dias`;
 }
 
 export function textoStatus(q) {
   if (q.ultima_acertou == null) return 'Ainda não refeita';
   const n = q.tentativas || 0;
-  return `${q.ultima_acertou ? 'Acertou' : 'Errou'} na última · ${n} ${n === 1 ? 'tentativa' : 'tentativas'}`;
+  const base = `${q.ultima_acertou ? 'Acertou' : 'Errou'} na última · ${n} ${n === 1 ? 'tentativa' : 'tentativas'}`;
+  const quando = q.ultima_acertou ? quandoRevisar(q) : '';
+  return quando ? `${base} · ${quando}` : base;
 }
 
 /** Fisher-Yates sobre uma cópia; `aleatorio` é injetável pra poder testar. */
@@ -172,7 +239,7 @@ export function montarPayload(d) {
 const LIMPA_QUESTAO = { cortadas: [], marcada: null, respondida: false, resultado: null, riscouAGabarito: false, erro: '' };
 
 export function estadoInicialRefazer(fila) {
-  return { fila, indice: 0, ...LIMPA_QUESTAO, acertos: 0, erros: 0, errouIds: [], fim: false };
+  return { fila, indice: 0, ...LIMPA_QUESTAO, salvas: {}, acertos: 0, erros: 0, errouIds: [], fim: false };
 }
 
 export const questaoAtual = (e) => e.fila[e.indice];
@@ -221,10 +288,37 @@ export function filaDasErradas(e) {
   return e.fila.filter(q => e.errouIds.includes(q.id));
 }
 
+// ── navegar livremente entre as questões da rodada ────────────────────────────
+// Ao sair de uma questão, o que ela tinha (tesouras, marcação, resposta) fica guardado em `salvas`;
+// ao voltar, tudo reaparece. A questão em que você está é sempre a "viva" (os campos do próprio estado).
+const camposDaQuestao = (e) => ({
+  cortadas: e.cortadas, marcada: e.marcada, respondida: e.respondida,
+  resultado: e.resultado, riscouAGabarito: e.riscouAGabarito, erro: e.erro,
+});
+
+function irPara(e, indice) {
+  const salvas = { ...e.salvas, [questaoAtual(e).id]: camposDaQuestao(e) };
+  return { ...e, salvas, indice, fim: false, ...(salvas[e.fila[indice].id] || LIMPA_QUESTAO) };
+}
+
+export function anterior(e) { return e.indice > 0 ? irPara(e, e.indice - 1) : e; }
+export function seguinte(e) { return e.indice + 1 < e.fila.length ? irPara(e, e.indice + 1) : e; }
+
+/** Depois de responder: avança; na última, mostra o fim (sem apagar a resposta dela). */
 export function proxima(e) {
-  const indice = e.indice + 1;
-  if (indice >= e.fila.length) return { ...e, ...LIMPA_QUESTAO, fim: true };
-  return { ...e, ...LIMPA_QUESTAO, indice };
+  if (e.indice + 1 >= e.fila.length) {
+    return { ...e, salvas: { ...e.salvas, [questaoAtual(e).id]: camposDaQuestao(e) }, fim: true };
+  }
+  return irPara(e, e.indice + 1);
+}
+
+const respondidaNaRodada = (e, i) => (i === e.indice ? e.respondida : Boolean((e.salvas[e.fila[i].id] || {}).respondida));
+export const totalRespondidas = (e) => e.fila.filter((_, i) => respondidaNaRodada(e, i)).length;
+export const indicesNaoRespondidos = (e) => e.fila.map((_, i) => i).filter(i => !respondidaNaRodada(e, i));
+
+export function irParaPrimeiraPulada(e) {
+  const [primeira] = indicesNaoRespondidos(e);
+  return primeira === undefined ? e : irPara(e, primeira);
 }
 
 export function refazerEsta(e) {

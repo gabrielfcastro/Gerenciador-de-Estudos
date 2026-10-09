@@ -65,3 +65,39 @@ test('a dica ao passar o mouse também mostra os segundos exatos', () => {
   const rotulo = config.options.plugins.tooltip.callbacks.label({ dataset: config.data.datasets[0], dataIndex: 0 });
   assert.match(rotulo, /Dir\. Tributário: 1h 21m/);
 });
+
+// ── séries escondidas pela legenda (clicar no nome da matéria) ─────────────
+function desenharCom(datasets, visivel) {
+  const chamadas = [];
+  const ctx = { font: '', save() {}, restore() {}, fillText(texto, x, y) { chamadas.push({ texto, y }); } };
+  plugin.afterDatasetsDraw({
+    ctx, data: { labels: ['Seg'], datasets }, isDatasetVisible: visivel,
+    scales: { x: { getPixelForValue: () => 100 }, y: { getPixelForValue: (v) => 300 - v * 100 } },
+  });
+  return chamadas;
+}
+const SERIES = [{ data: [1], segundos: [3600] }, { data: [2], segundos: [7200] }, { data: [0.5], segundos: [1800] }];
+
+test('o total soma só as séries visíveis: as escondidas na legenda não contam', () => {
+  const [c] = desenharCom(SERIES, (i) => i !== 1);              // a série do meio foi escondida
+  assert.equal(c.texto, '1h 30m');
+});
+
+test('o total fica logo acima da barra que está desenhada, não no topo do gráfico', () => {
+  const [c] = desenharCom(SERIES, (i) => i !== 1);
+  assert.equal(c.y, 300 - 1.5 * 100 - 8);                       // altura de 1,5h (visíveis), e não de 3,5h (todas)
+});
+
+test('com todas as séries escondidas, nenhum total é escrito', () => {
+  assert.equal(desenharCom(SERIES, () => false).length, 0);
+});
+
+test('reexibir a série volta a somá-la', () => {
+  const [c] = desenharCom(SERIES, () => true);
+  assert.equal(c.texto, '3h 30m');
+});
+
+test('sem isDatasetVisible (gráfico simples) todas as séries contam', () => {
+  const [c] = desenharCom(SERIES, undefined);
+  assert.equal(c.texto, '3h 30m');
+});

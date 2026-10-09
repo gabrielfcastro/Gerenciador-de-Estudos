@@ -73,13 +73,6 @@ test('htmlSegTipo: três botões com contagem; o ativo fica pressionado', () => 
   assert.match(h, /aria-pressed="true"[^>]*>Certo ou errado/);
 });
 
-test('htmlResumo: quantidade, singular e aproveitamento', () => {
-  assert.match(V.htmlResumo([Q({ tentativas: 4, acertos: 3 }), Q({ tentativas: 4, acertos: 1 })]), /2 questões/);
-  assert.match(V.htmlResumo([Q()]), /1 questão\b/);
-  assert.match(V.htmlResumo([Q({ tentativas: 4, acertos: 3 }), Q({ tentativas: 4, acertos: 1 })]), /50%/);
-  assert.match(V.htmlResumo([Q()]), /Ainda sem tentativas/);
-});
-
 test('htmlTopoAcoes: o botão de resolver só aparece com questões e informa a quantidade', () => {
   assert.match(V.htmlTopoAcoes(12), /aria-label="Resolver 12 questões"/);
   assert.match(V.htmlTopoAcoes(1), /aria-label="Resolver 1 questão"/);
@@ -303,4 +296,117 @@ test('htmlPainel: singular', () => {
 
 test('htmlPainel: caderno vazio não desenha painel', () => {
   assert.equal(V.htmlPainel(L.resumoGeral([]), ''), '');
+});
+
+// ── revisão espaçada ───────────────────────────────────────────────────────
+const HOJE = new Date(2026, 9, 8, 12, 0, 0);
+const comHoje = (fn) => { const r = L.usarRelogio(() => HOJE); try { fn(); } finally { r(); } };
+const diasAtras = (n) => { const d = new Date(HOJE); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 19).replace('T', ' '); };
+const ACERTOU = (seguidos, dias, o = {}) => Q({ ultima_acertou: true, acertos_seguidos: seguidos, ultima_respondida_em: diasAtras(dias), tentativas: seguidos, acertos: seguidos, ...o });
+
+test('htmlLinha: questão vencida tem ícone próprio e avisa que venceu', () => {
+  comHoje(() => {
+    const h = V.htmlLinha(ACERTOU(3, 10));
+    assert.match(h, /q-st-venc/); assert.match(h, /href="#i-clock"/); assert.match(h, /venceu há 3 dias/);
+  });
+});
+
+test('htmlLinha: questão em dia continua com o ✓ e diz quando revisar', () => {
+  comHoje(() => {
+    const h = V.htmlLinha(ACERTOU(2, 0));
+    assert.match(h, /q-st-ok/); assert.match(h, /revisar em 3 dias/);
+  });
+});
+
+test('htmlPainel: o cartão "Vencidas" mostra o número e aplica a situação', () => {
+  comHoje(() => {
+    const r = L.resumoGeral([ACERTOU(1, 0), ACERTOU(1, 1), ACERTOU(3, 10), Q({ ultima_acertou: false })]);
+    const h = V.htmlPainel(r, '');
+    assert.match(h, /Vencidas/); assert.match(h, /q-kpi-num venc">2</); assert.match(h, /Questoes\.situacao\('vencidas'\)/);
+    assert.match(h, /q-kpi-num ok">1</);
+  });
+});
+
+test('htmlPainel: o botão "Revisar hoje" soma o que errou e o que venceu', () => {
+  comHoje(() => {
+    const r = L.resumoGeral([ACERTOU(1, 1), ACERTOU(3, 10), Q({ ultima_acertou: false }), ACERTOU(1, 0)]);
+    const h = V.htmlPainel(r, '');
+    assert.match(h, /onclick="Questoes\.revisarHoje\(\)"/); assert.match(h, /Revisar hoje · 3/);
+  });
+});
+
+test('htmlPainel: sem nada pendente, avisa que a revisão de hoje está em dia', () => {
+  comHoje(() => {
+    const h = V.htmlPainel(L.resumoGeral([ACERTOU(1, 0), ACERTOU(2, 0)]), '');
+    assert.match(h, /Revisão de hoje em dia/); assert.ok(!h.includes('revisarHoje'));
+  });
+});
+
+test('htmlPainel: com o caderno todo ainda por fazer, não diz que está "em dia"', () => {
+  const h = V.htmlPainel(L.resumoGeral([Q({ id: 1 }), Q({ id: 2 })]), '');
+  assert.ok(!h.includes('Revisão de hoje em dia') && !h.includes('revisarHoje'));
+});
+
+test('htmlCartaoRefazer: ao acertar, mostra quando será a próxima revisão', () => {
+  let e = L.marcarAlternativa(rodada(), 1);
+  e = L.aplicarResultado(e, { acertou: true, gabarito: 'B', justificativa: '', acertos_seguidos: 1 });
+  assert.match(V.htmlCartaoRefazer(e), /Você acertou · próxima revisão amanhã/);
+  e = L.aplicarResultado(L.refazerEsta(e), { acertou: true, gabarito: 'B', justificativa: '', acertos_seguidos: 3 });
+  assert.match(V.htmlCartaoRefazer(e), /próxima revisão em 7 dias/);
+});
+
+test('htmlCartaoRefazer: ao errar, não promete data de revisão', () => {
+  let e = L.marcarAlternativa(rodada(), 0);
+  e = L.aplicarResultado(e, { acertou: false, gabarito: 'B', justificativa: '', acertos_seguidos: 0 });
+  assert.ok(!V.htmlCartaoRefazer(e).includes('próxima revisão'));
+});
+
+test('htmlCartaoRefazer: depois de responder, o botão de avançar está marcado pra receber o foco do teclado', () => {
+  let e = L.marcarAlternativa(rodada(), 1);
+  e = L.aplicarResultado(e, { acertou: true, gabarito: 'B', justificativa: '' });
+  assert.match(V.htmlCartaoRefazer(e), /data-foco="proxima"[^>]*onclick="Questoes\.proxima\(\)"|onclick="Questoes\.proxima\(\)"[^>]*data-foco="proxima"/);
+});
+
+// ── contagem só para leitor de tela (a linha visível foi removida) ──────────
+test('htmlContagemOculta: avisa a quantidade, sem aparecer na tela', () => {
+  assert.match(V.htmlContagemOculta(3), /class="sr-only" role="status">3 questões</);
+  assert.match(V.htmlContagemOculta(1), />1 questão</);
+});
+
+// ── navegação entre as questões ───────────────────────────────────────────
+const OK3 = { acertou: true, gabarito: 'B', justificativa: '' };
+const tres = () => L.estadoInicialRefazer([Q({ id: 1 }), Q({ id: 2 }), Q({ id: 3 })]);
+
+test('htmlCartaoRefazer: setas pra voltar e avançar, com rótulo acessível', () => {
+  const h = V.htmlCartaoRefazer(L.seguinte(tres()));
+  assert.match(h, /data-nav="anterior"[^>]*onclick="Questoes\.anterior\(\)"|onclick="Questoes\.anterior\(\)"[^>]*data-nav="anterior"/);
+  assert.match(h, /data-nav="seguinte"[^>]*onclick="Questoes\.seguinte\(\)"|onclick="Questoes\.seguinte\(\)"[^>]*data-nav="seguinte"/);
+  assert.match(h, /aria-label="Questão anterior"/); assert.match(h, /aria-label="Ir para a próxima questão"/);
+});
+
+test('htmlCartaoRefazer: na primeira questão não dá pra voltar; na última não dá pra avançar', () => {
+  const primeira = V.htmlCartaoRefazer(tres());
+  assert.match(primeira, /data-nav="anterior"[^>]*disabled/); assert.ok(!/data-nav="seguinte"[^>]*disabled/.test(primeira));
+  const ultima = V.htmlCartaoRefazer(L.seguinte(L.seguinte(tres())));
+  assert.match(ultima, /data-nav="seguinte"[^>]*disabled/); assert.ok(!/data-nav="anterior"[^>]*disabled/.test(ultima));
+});
+
+test('htmlCartaoRefazer: a barra de progresso conta as respondidas, não a posição', () => {
+  const andou = V.htmlCartaoRefazer(L.seguinte(L.seguinte(tres())));
+  assert.match(andou, /Questão 3 de 3/); assert.match(andou, /aria-valuenow="0"/);
+  const respondeu = V.htmlCartaoRefazer(L.aplicarResultado(L.marcarAlternativa(L.seguinte(tres()), 1), OK3));
+  assert.match(respondeu, /aria-valuenow="1"/);
+});
+
+test('htmlFim: avisa das questões puladas e oferece ir até elas', () => {
+  let e = L.proxima(L.aplicarResultado(L.marcarAlternativa(tres(), 1), OK3));          // respondeu a 1ª
+  e = L.seguinte(e); e = L.proxima(L.aplicarResultado(L.marcarAlternativa(e, 1), OK3)); // respondeu a 3ª (pulou a 2ª) → fim
+  const h = V.htmlFim(e);
+  assert.match(h, /pulou 1 questão/); assert.match(h, /Questoes\.irParaPulada\(\)/);
+});
+
+test('htmlFim: sem puladas, o aviso não aparece', () => {
+  let e = L.estadoInicialRefazer([Q({ id: 1 })]);
+  e = L.proxima(L.aplicarResultado(L.marcarAlternativa(e, 1), OK3));
+  assert.ok(!V.htmlFim(e).includes('pulou'));
 });

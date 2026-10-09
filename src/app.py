@@ -251,5 +251,4 @@ if __name__ == "__main__":
         signal.signal(signal.SIGHUP, _encerrar_com_seguranca)
 
     port = 8000
-    print(f"✅ Servidor rodando em http://localhost:{port}")
     HTTPServer(("localhost", port), Handler).serve_forever()

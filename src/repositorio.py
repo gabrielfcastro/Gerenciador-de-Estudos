@@ -435,7 +435,12 @@ class RepositorioQuestoes:
         SELECT q.*,
                (SELECT COUNT(*) FROM question_attempts a WHERE a.question_id = q.id) AS tentativas,
                (SELECT COALESCE(SUM(a.acertou), 0) FROM question_attempts a WHERE a.question_id = q.id) AS acertos,
-               (SELECT a.acertou FROM question_attempts a WHERE a.question_id = q.id ORDER BY a.id DESC LIMIT 1) AS ultima_acertou
+               (SELECT a.acertou FROM question_attempts a WHERE a.question_id = q.id ORDER BY a.id DESC LIMIT 1) AS ultima_acertou,
+               (SELECT a.respondida_em FROM question_attempts a WHERE a.question_id = q.id ORDER BY a.id DESC LIMIT 1) AS ultima_respondida_em,
+               -- acertos seguidos = tentativas depois do último erro (todas elas são acertos, por definição)
+               (SELECT COUNT(*) FROM question_attempts a WHERE a.question_id = q.id
+                   AND a.id > COALESCE((SELECT MAX(w.id) FROM question_attempts w WHERE w.question_id = q.id AND w.acertou = 0), 0)
+               ) AS acertos_seguidos
         FROM questions q
     """
 

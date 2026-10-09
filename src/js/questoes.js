@@ -81,7 +81,7 @@ function desenharLista() {
   if (!lista.length) { alvo.innerHTML = V.htmlSemResultados(); return; }
 
   const visiveis = lista.slice(0, estado.limite);
-  alvo.innerHTML = V.htmlResumo(lista)
+  alvo.innerHTML = V.htmlContagemOculta(lista.length)
     + `<div class="q-lista">${visiveis.map(V.htmlLinha).join('')}</div>`
     + (lista.length > visiveis.length ? V.htmlMostrarMais(lista.length - visiveis.length) : '');
 }
@@ -110,13 +110,18 @@ function desenharRefazer(foco) {
   if (!e) return;
   const tela = $('q-tela-refazer');
   tela.innerHTML = e.fim ? V.htmlFim(e) : V.htmlCartaoRefazer(e);
-  const alvo = foco && tela.querySelector(foco);
-  if (alvo && alvo.focus) alvo.focus();
+  for (const seletor of [].concat(foco || [])) {                 // o primeiro que existir e estiver habilitado
+    const alvo = tela.querySelector(seletor);
+    if (alvo && !alvo.disabled && alvo.focus) { alvo.focus(); break; }
+  }
 }
 
 function registrarResultadoLocal(id, r) {
   const q = estado.questoes.find(x => x.id === id);
-  if (q) { q.tentativas = r.tentativas; q.acertos = r.acertos; q.ultima_acertou = r.acertou; }
+  if (q) {
+    q.tentativas = r.tentativas; q.acertos = r.acertos; q.ultima_acertou = r.acertou;
+    q.acertos_seguidos = r.acertos_seguidos; q.ultima_respondida_em = r.ultima_respondida_em;
+  }
 }
 
 async function responder() {
@@ -352,10 +357,19 @@ export const Questoes = {
     if (!lista.length) { toast('Nenhuma questão nos filtros atuais.', 'erro'); return; }
     abrirRefazer(L.embaralhar(lista));
   },
+  /** A fila da revisão espaçada: o que errou + o que venceu. Ignora os filtros da lista. */
+  revisarHoje() {
+    const fila = estado.questoes.filter(q => ['revisar', 'vencidas'].includes(L.situacaoDe(q)));
+    if (!fila.length) { toast('Nada para revisar hoje.', 'ok'); return; }
+    abrirRefazer(L.embaralhar(fila));
+  },
   cortar(i) { estado.refazer = L.alternarCorte(estado.refazer, i); desenharRefazer(`.q-tesoura[data-alt="${i}"]`); },
   marcar(i) { estado.refazer = L.marcarAlternativa(estado.refazer, i); desenharRefazer(`.q-alt-corpo[data-alt="${i}"]`); },
   responder,
   proxima() { estado.refazer = L.proxima(estado.refazer); desenharRefazer(); },
+  anterior() { if (!estado.refazer) return; estado.refazer = L.anterior(estado.refazer); desenharRefazer(['[data-nav="anterior"]', '[data-nav="seguinte"]']); },
+  seguinte() { if (!estado.refazer) return; estado.refazer = L.seguinte(estado.refazer); desenharRefazer(['[data-nav="seguinte"]', '[data-nav="anterior"]']); },
+  irParaPulada() { estado.refazer = L.irParaPrimeiraPulada(estado.refazer); desenharRefazer(); },
   refazerEsta() { estado.refazer = L.refazerEsta(estado.refazer); desenharRefazer(); },
   refazerErradas() { abrirRefazer(L.embaralhar(L.filaDasErradas(estado.refazer).map(atualizada))); },
   refazerTudo() { abrirRefazer(L.embaralhar(estado.refazer.fila.map(atualizada))); },
@@ -387,6 +401,15 @@ export const Questoes = {
 export function inicializarQuestoes() {
   $('q-form-modal').addEventListener('click', (e) => { if (e.target === $('q-form-modal')) fecharFormulario(); });
   document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {            // setas navegam entre as questões da rodada
+      const r = estado.refazer;
+      if (!r || r.fim || $('q-tela-refazer').hidden || $('q-form-modal').classList.contains('open')) return;
+      if (e.target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;   // não atrapalha quem digita
+      if (document.querySelector && document.querySelector('[role="alertdialog"]')) return;
+      e.preventDefault();
+      if (e.key === 'ArrowLeft') Questoes.anterior(); else Questoes.seguinte();
+      return;
+    }
     if (e.key !== 'Escape' || !$('q-form-modal').classList.contains('open')) return;
     if (document.querySelector && document.querySelector('[role="alertdialog"]')) return;   // o "Escape" é do diálogo de confirmação
     fecharFormulario();

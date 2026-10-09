@@ -721,6 +721,66 @@ class TestQuestoes:
             self._criar(tipo="XX")
 
 
+class TestRevisaoEspacada:
+    """O servidor informa os FATOS (acertos seguidos e data da última tentativa); a escada de prazos mora no frontend."""
+
+    def _questao(self, enunciado="q"):
+        from repositorio import RepositorioQuestoes
+        return RepositorioQuestoes.criar(materia_nome="M", materia_cor="#000000", assunto="", banca="", tipo="ME",
+                                         enunciado=enunciado, alternativas_json='["a","b"]', gabarito="B", justificativa="")
+
+    def _tentativas(self, q, *resultados):
+        from repositorio import RepositorioQuestoes
+        for acertou in resultados:
+            RepositorioQuestoes.registrar_tentativa(q["id"], "B" if acertou else "A", 1 if acertou else 0)
+
+    def _seguidos(self, q):
+        from repositorio import RepositorioQuestoes
+        return RepositorioQuestoes.obter(q["id"])["acertos_seguidos"]
+
+    def test_sem_tentativas_nao_ha_acertos_seguidos_nem_data(self):
+        from repositorio import RepositorioQuestoes
+        q = RepositorioQuestoes.obter(self._questao()["id"])
+        assert q["acertos_seguidos"] == 0 and q["ultima_respondida_em"] is None
+
+    def test_conta_os_acertos_depois_do_ultimo_erro(self):
+        q = self._questao(); self._tentativas(q, 1, 1, 0, 1, 1, 1)
+        assert self._seguidos(q) == 3
+
+    def test_so_acertos_contam_todos(self):
+        q = self._questao(); self._tentativas(q, 1, 1, 1)
+        assert self._seguidos(q) == 3
+
+    def test_se_a_ultima_foi_erro_zera(self):
+        q = self._questao(); self._tentativas(q, 1, 1, 0)
+        assert self._seguidos(q) == 0
+
+    def test_um_erro_isolado_no_comeco_nao_atrapalha(self):
+        q = self._questao(); self._tentativas(q, 0, 1, 1)
+        assert self._seguidos(q) == 2
+
+    def test_nao_mistura_questoes_diferentes(self):
+        a, b = self._questao("a"), self._questao("b")
+        self._tentativas(a, 1, 1); self._tentativas(b, 1, 0)
+        assert self._seguidos(a) == 2 and self._seguidos(b) == 0
+
+    def test_ultima_respondida_em_e_a_da_tentativa_mais_recente(self):
+        import sqlite3, database
+        from repositorio import RepositorioQuestoes
+        q = self._questao(); self._tentativas(q, 1, 1)
+        conn = sqlite3.connect(database.caminho_questoes())
+        conn.execute("UPDATE question_attempts SET respondida_em = '2026-10-01 10:00:00' WHERE id = 1")
+        conn.execute("UPDATE question_attempts SET respondida_em = '2026-10-05 22:30:00' WHERE id = 2")
+        conn.commit(); conn.close()
+        assert RepositorioQuestoes.obter(q["id"])["ultima_respondida_em"] == "2026-10-05 22:30:00"
+
+    def test_listar_tambem_traz_os_campos(self):
+        from repositorio import RepositorioQuestoes
+        q = self._questao(); self._tentativas(q, 1)
+        item = RepositorioQuestoes.listar()[0]
+        assert item["acertos_seguidos"] == 1 and item["ultima_respondida_em"]
+
+
 class TestCadernoEmArquivoProprio:
     """O caderno mora em caderno_de_questoes.db: nenhum "novo ciclo" do banco principal o alcança."""
 

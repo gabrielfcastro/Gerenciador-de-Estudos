@@ -640,3 +640,24 @@ class TestQuestoes:
         req(porta, "DELETE", f"/api/categories/{cat['id']}")
         lista = req(porta, "GET", "/api/questions")[1]
         assert len(lista) == 1 and lista[0]["materia_nome"] == "Dir. Financeiro"
+
+    def test_get_traz_acertos_seguidos_e_data_da_ultima_tentativa(self, porta):
+        _, q = req(porta, "POST", "/api/questions", self._me())
+        for resp in ("B", "A", "B", "B"):
+            req(porta, "POST", "/api/questions/answer", {"question_id": q["id"], "resposta": resp})
+        item = req(porta, "GET", "/api/questions")[1][0]
+        assert item["acertos_seguidos"] == 2
+        assert len(item["ultima_respondida_em"]) == 19            # "AAAA-MM-DD HH:MM:SS" (UTC)
+
+    def test_questao_sem_tentativas_vem_com_zero_e_sem_data(self, porta):
+        req(porta, "POST", "/api/questions", self._me())
+        item = req(porta, "GET", "/api/questions")[1][0]
+        assert item["acertos_seguidos"] == 0 and item["ultima_respondida_em"] is None
+
+    def test_answer_devolve_acertos_seguidos_pra_tela_atualizar_sem_recarregar(self, porta):
+        _, q = req(porta, "POST", "/api/questions", self._me())
+        req(porta, "POST", "/api/questions/answer", {"question_id": q["id"], "resposta": "B"})
+        _, res = req(porta, "POST", "/api/questions/answer", {"question_id": q["id"], "resposta": "B"})
+        assert res["acertos_seguidos"] == 2 and res["ultima_respondida_em"]
+        _, res = req(porta, "POST", "/api/questions/answer", {"question_id": q["id"], "resposta": "A"})
+        assert res["acertos_seguidos"] == 0
